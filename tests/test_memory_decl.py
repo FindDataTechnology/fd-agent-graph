@@ -32,7 +32,7 @@ class NormalizeAcceptsTests(unittest.TestCase):
         result = normalize(
             {
                 "store": {"home": "member"},
-                "read": {"scope": "own", "budget": BUDGET_MAX},
+                "read": {"scope": "shared", "budget": BUDGET_MAX},
                 "write": {"authority": "private"},
                 "process": {"distill": "off", "promote_after": 5, "cold_after_days": 90},
             }
@@ -57,7 +57,8 @@ class NormalizeAcceptsTests(unittest.TestCase):
         for home in ("fleet", "member", "person"):
             with self.subTest(home=home):
                 self.assertTrue(normalize({"store": {"home": home}})["ok"])
-        for scope in ("own", "shared", "own+shared", "off"):
+        # `own` is absent on purpose: no consumer executes it literally.
+        for scope in ("shared", "own+shared", "off"):
             with self.subTest(scope=scope):
                 self.assertTrue(normalize({"read": {"scope": scope}})["ok"])
         for authority in ("private", "shared"):
@@ -119,6 +120,18 @@ class NormalizeRejectsTests(unittest.TestCase):
                 result = normalize({"write": {"authority": value}})
                 self.assertEqual(codes(result), {"write_authority_invalid"})
                 self.assertIn("not a storage location", result["errors"][0]["message"])
+
+    def test_own_is_refused_as_unexecutable_not_unknown(self) -> None:
+        """The value is meaningful; it just has no consumer that would honour it.
+
+        yongyi-client branches on `scope === "own+shared"` alone, so `own` would
+        skip the own probe and still read shared — reading more than it says.
+        """
+        result = normalize({"read": {"scope": "own"}})
+        self.assertEqual(codes(result), {"read_scope_unexecutable"})
+        message = result["errors"][0]["message"]
+        self.assertIn("no consumer", message)
+        self.assertIn("own+shared", message)
 
     def test_read_scope_rejects_authority_values(self) -> None:
         for value in ("private", "public"):

@@ -40,11 +40,15 @@ from .binding import MEMORY_SCOPES
 
 STORE_HOMES = ("fleet", "member", "person")
 
-SCOPE_OWN = "own"
 SCOPE_SHARED = "shared"
 SCOPE_BOTH = "own+shared"
 SCOPE_OFF = "off"
-READ_SCOPES = (SCOPE_OWN, SCOPE_SHARED, SCOPE_BOTH, SCOPE_OFF)
+#: `own` (own-partition only) is deliberately absent. yongyi-client's readDigest
+#: branches on `scope === "own+shared"` alone, so a declared `own` would skip the
+#: own probe and still read shared — reading MORE than it says, which is worse
+#: than a loud refusal. A value earns its place in this tuple by having a consumer
+#: that executes it literally, the same rule the process sub-keys follow.
+READ_SCOPES = (SCOPE_SHARED, SCOPE_BOTH, SCOPE_OFF)
 
 DISTILL_ON = "on"
 DISTILL_OFF = "off"
@@ -213,6 +217,19 @@ def _check_value(
         return value
 
     if axis == "read" and key == "scope":
+        if value == "own":
+            # Named separately from "not in the vocabulary": the value is
+            # meaningful, it just has no consumer that would execute it, and
+            # saying so stops the next reader from re-adding it hopefully.
+            _err(
+                errors,
+                path,
+                "read_scope_unexecutable",
+                f"{path} = 'own' has no consumer that executes it: the read face only "
+                f"distinguishes 'own+shared' from everything else, so 'own' would read "
+                f"shared too (more than declared); use one of {list(READ_SCOPES)}",
+            )
+            return None
         if value not in READ_SCOPES:
             _err(errors, path, "read_scope_invalid", f"{path} must be one of {list(READ_SCOPES)}")
             return None
