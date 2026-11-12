@@ -54,7 +54,8 @@ nodes:
     effects: [write]
     idempotent: true
     cost: 2
-    tools: [Read, Write]
+    # 与 roster 同步：正文要求 grep 枚举 export，只 Read+Write 做不到
+    tools: [Read, Grep, Write]
     inputs:
       scope: {type: object}
       exit_contract: {type: object}

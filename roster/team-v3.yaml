@@ -49,7 +49,9 @@ agents:
   - id: contractor
     role: 把公开接口写成机器可读契约——名字、参数、返回形状、边界语义，只此一份
     template_node: contractor
-    tools: [Read, Write]
+    # [Read, Write] 时正文要求的「grep 枚举全部 export」根本做不了 → 补 Grep
+    # （只读；不用 Bash 是不想把整个 shell 面打开，它只需要枚举名字）
+    tools: [Read, Grep, Write]
     model: ""
     thought_level: max          # 契约错了，三路一起错
     skills: []
