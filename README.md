@@ -44,6 +44,22 @@ python3 -m fd_agent_graph.cli codes                                  # 违规码
 
 例：`examples/fanout-12.yaml` 宽度 12、上限 3.75 —— 12 个 worker 能跑，只是只值 3.75×。
 
+## 测试
+
+```bash
+PYTHONPATH=. python3 -m unittest discover -s tests -q
+```
+
+2026-11-12 实测 282 条通过、5 条 skip。**那 5 条不是"没跑到的未知数"，是已知的烂 fixture**：
+它们断言的是「在真 change 上量」的读数，而 fixture 是工作区根目录下的
+`openspec/changes/<name>/tasks.md`（`build/wire-alert-delivery.graph.yaml` 的 `generated_from`
+记的还是 `/Users/chengsishi/finddata/openspec/changes/wire-alert-delivery/tasks.md`）。
+那个目录已不在工作区里，所以 `Path(__file__).parents[2]` 找不到它，用例**显式 skip 并打印原因**
+（`skip` 与 `pass` 在输出上可分，这是有意的）。
+
+**不要为了变绿把它们改成"不存在也能过"**：那几个断言的期望值（如 2,186 个文件 vs 任务点名的 14 个）
+只对那一份 change 成立。要在本地复现，就把对应的 change 放回工作区根再跑。
+
 ## 图定义
 
 ```yaml
