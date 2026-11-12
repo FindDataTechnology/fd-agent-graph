@@ -1,0 +1,63 @@
+{
+ "claimed_concurrency": 12,
+ "note": "every ceiling is a shape bound (total work / critical path), not measured throughput",
+ "dispatch_12_way": {
+  "width": 12,
+  "critical_path": 4,
+  "total_cost": 15,
+  "speed_up_ceiling": 3.75,
+  "errors": 0,
+  "warnings": 24,
+  "constraint_drops": 24,
+  "dropped_ports": [
+   "file_ownership",
+   "review_note"
+  ],
+  "may_dispatch_12": true,
+  "capacity_ok": true,
+  "payoff_ok": false,
+  "payoff_warning": "12 workers fit (width 12) but the graph's speed-up ceiling is 3.75: past this point extra workers buy diminishing returns because the serial head and tail dominate. Dispatch is not blocked; the 12 wor",
+  "reason": "no blocking findings; 12 worker(s) fit within width 12"
+ },
+ "baseline_12_way": {
+  "graph": "dispatch-12-way",
+  "baseline": "dispatch-12-way~linear",
+  "graph_width": 12,
+  "graph_speed_up_ceiling": 3.75,
+  "baseline_width": 1,
+  "baseline_speed_up_ceiling": 1.0,
+  "gain": 2.75,
+  "note": "ceiling is a shape upper bound (total work / critical path), not measured throughput"
+ },
+ "real_changes": {
+  "add-hotel-vertical": {
+   "sections": 7,
+   "width": 7,
+   "critical_path": 6,
+   "total_cost": 34,
+   "speed_up_ceiling": 5.667,
+   "may_dispatch_12": false,
+   "blocking_errors": 34,
+   "generated": "fd-agent-graph/build/add-hotel-vertical.yaml"
+  },
+  "add-supply-chain-vertical": {
+   "sections": 9,
+   "width": 8,
+   "critical_path": 7,
+   "total_cost": 36,
+   "speed_up_ceiling": 5.143,
+   "may_dispatch_12": false,
+   "blocking_errors": 36,
+   "generated": "fd-agent-graph/build/add-supply-chain-vertical.yaml"
+  },
+  "awaken-agriculture-report-ingest": {
+   "error": "tasks.md not found"
+  }
+ },
+ "summary": {
+  "changes_measured": 2,
+  "max_measured_ceiling": 5.667,
+  "claimed_concurrency_supported": false,
+  "dispatch_12_way_ceiling": 3.75
+ }
+}

@@ -1,0 +1,38 @@
+graph: linear-baseline
+version: 1
+entries: [planner]
+terminals: [verifier]
+inputs:
+  goal: {type: string}
+nodes:
+  - id: planner
+    kind: agent
+    effects: [read]
+    idempotent: true
+    inputs:
+      goal: {type: string}
+    outputs:
+      plan: {type: object}
+  - id: implementer
+    kind: agent
+    effects: [write, network]
+    idempotent: false
+    inputs:
+      plan: {type: object, required: true}
+    outputs:
+      patch: {type: string}
+  - id: verifier
+    kind: verify
+    effects: [read]
+    idempotent: true
+    inputs:
+      patch: {type: string}
+    outputs:
+      verdict: {type: boolean}
+edges:
+  - from: planner
+    to: implementer
+    carries: [plan]
+  - from: implementer
+    to: verifier
+    carries: [patch]

@@ -1,0 +1,58 @@
+graph: coding-template-drops
+version: 1
+entries: [planner]
+terminals: [verify]
+inputs:
+  change: {type: string}
+nodes:
+  - id: planner
+    kind: agent
+    effects: [read]
+    idempotent: true
+    inputs:
+      change: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+    description: 读 change 的 tasks，按仓/目录切成互不重叠的片
+  - id: worker
+    kind: agent
+    effects: [write, network]
+    idempotent: true
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      patch: {type: string}
+      file_ownership: {type: array, items: {type: string}, constraint: true}
+      review_note: {type: array, items: {type: string}, constraint: true}
+    description: 只改自己那片；产出改了哪些文件、有什么要下游注意
+  - id: merge
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    inputs:
+      patch: {type: string}
+      scope: {type: object}
+    outputs:
+      merged: {type: string}
+    description: 承接口径与每路的文件归属、审查要点；冲突在此处显式解决
+  - id: verify
+    kind: verify
+    effects: [read]
+    idempotent: true
+    inputs:
+      merged: {type: string}
+    outputs:
+      verdict: {type: boolean}
+edges:
+  - from: planner
+    to: worker
+    carries: [tasks, scope]
+  - from: worker
+    to: merge
+    carries: [patch]
+  - from: merge
+    to: verify
+    carries: [merged]

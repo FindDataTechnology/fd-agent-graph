@@ -1,0 +1,266 @@
+graph: multi-team
+version: 1
+entries: [planner_a, planner_b, planner_c]
+terminals: [rollup]
+inputs:
+  batch: {type: string}
+
+# 三支独立队伍 × 每队两路实现 = 同一超步 6 路并行。
+# 每队自带 merge（本队两路的扇入），最后 rollup 是全批的扇入——
+# 跨队扇入比队内扇入更容易丢约束，所以它必须承接每队的 export_list 与 evidence，
+# 而不是只看"三份测试都绿了"。
+nodes:
+  - id: planner_a
+    kind: agent
+    effects: [read]
+    idempotent: true
+    cost: 2
+    inputs:
+      batch: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+    description: 只切 A 项目（磁盘趋势）两片文件集
+  - id: planner_b
+    kind: agent
+    effects: [read]
+    idempotent: true
+    cost: 2
+    inputs:
+      batch: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+    description: 只切 B 项目（端口暴露清单）两片文件集
+  - id: planner_c
+    kind: agent
+    effects: [read]
+    idempotent: true
+    cost: 2
+    inputs:
+      batch: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+    description: 只切 C 项目（备份新鲜度）两片文件集
+
+  - id: impl_a1
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: A 项目核心模块
+  - id: impl_a2
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: A 项目 CLI 与报告
+  - id: impl_b1
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: B 项目 netstat 解析
+  - id: impl_b2
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: B 项目 CLI 与判定
+  - id: impl_c1
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: C 项目目录扫描
+  - id: impl_c2
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: C 项目 CLI 与 SLA 判定
+
+  - id: merge_a
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: A 队两路扇入
+  - id: merge_b
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: B 队两路扇入
+  - id: merge_c
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: C 队两路扇入
+
+  - id: verify_a
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+  - id: verify_b
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+  - id: verify_c
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+
+  - id: rollup
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      evidence: {type: object}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      batch_verdict: {type: boolean}
+    description: 全批结算：三队的导出、丢弃与证据都要看，而不是只看"三份测试绿了"
+
+edges:
+  - {from: planner_a, to: impl_a1, carries: [tasks, scope]}
+  - {from: planner_a, to: impl_a2, carries: [tasks, scope]}
+  - {from: planner_b, to: impl_b1, carries: [tasks, scope]}
+  - {from: planner_b, to: impl_b2, carries: [tasks, scope]}
+  - {from: planner_c, to: impl_c1, carries: [tasks, scope]}
+  - {from: planner_c, to: impl_c2, carries: [tasks, scope]}
+  - {from: impl_a1, to: merge_a, carries: [exports, files_written, notes]}
+  - {from: impl_a2, to: merge_a, carries: [exports, files_written, notes]}
+  - {from: impl_b1, to: merge_b, carries: [exports, files_written, notes]}
+  - {from: impl_b2, to: merge_b, carries: [exports, files_written, notes]}
+  - {from: impl_c1, to: merge_c, carries: [exports, files_written, notes]}
+  - {from: impl_c2, to: merge_c, carries: [exports, files_written, notes]}
+  - {from: planner_a, to: merge_a, carries: [scope, exit_contract]}
+  - {from: planner_b, to: merge_b, carries: [scope, exit_contract]}
+  - {from: planner_c, to: merge_c, carries: [scope, exit_contract]}
+  - {from: merge_a, to: verify_a, carries: [export_list, dropped]}
+  - {from: merge_b, to: verify_b, carries: [export_list, dropped]}
+  - {from: merge_c, to: verify_c, carries: [export_list, dropped]}
+  - {from: planner_a, to: verify_a, carries: [scope, exit_contract]}
+  - {from: planner_b, to: verify_b, carries: [scope, exit_contract]}
+  - {from: planner_c, to: verify_c, carries: [scope, exit_contract]}
+  - {from: verify_a, to: rollup, carries: [export_list, dropped, evidence]}
+  - {from: verify_b, to: rollup, carries: [export_list, dropped, evidence]}
+  - {from: verify_c, to: rollup, carries: [export_list, dropped, evidence]}
+  - {from: planner_a, to: rollup, carries: [scope, exit_contract]}
+  - {from: planner_b, to: rollup, carries: [scope, exit_contract]}
+  - {from: planner_c, to: rollup, carries: [scope, exit_contract]}

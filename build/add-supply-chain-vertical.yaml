@@ -1,0 +1,605 @@
+edges:
+  - carries:
+      - todo_out
+    from: t1_1
+    to: t1_2
+  - carries:
+      - todo_out
+    from: t1_2
+    to: t1_3
+  - carries:
+      - todo_out
+    from: t1_3
+    to: t1_4
+  - carries:
+      - todo_out
+    from: t1_4
+    to: t1_5
+  - carries:
+      - todo_out
+    from: t1_5
+    to: t1_6
+  - carries:
+      - todo_out
+    from: t1_6
+    to: t1_7
+  - carries:
+      - todo_out
+    from: t2_1
+    to: t2_2
+  - carries:
+      - todo_out
+    from: t2_2
+    to: t2_3
+  - carries:
+      - todo_out
+    from: t3_1
+    to: t3_2
+  - carries:
+      - todo_out
+    from: t3_2
+    to: t3_3
+  - carries:
+      - todo_out
+    from: t3_3
+    to: t3_4
+  - carries:
+      - todo_out
+    from: t4_1
+    to: t4_2
+  - carries:
+      - todo_out
+    from: t4_2
+    to: t4_3
+  - carries:
+      - todo_out
+    from: t4_3
+    to: t4_4
+  - carries:
+      - todo_out
+    from: t5_1
+    to: t5_2
+  - carries:
+      - todo_out
+    from: t5_2
+    to: t5_3
+  - carries:
+      - todo_out
+    from: t5_3
+    to: t5_4
+  - carries:
+      - todo_out
+    from: t6_1
+    to: t6_2
+  - carries:
+      - todo_out
+    from: t6_2
+    to: t6_3
+  - carries:
+      - todo_out
+    from: t6_3
+    to: t6_4
+  - carries:
+      - todo_out
+    from: t6_4
+    to: t6_5
+  - carries:
+      - todo_out
+    from: t6_5
+    to: t6_6
+  - carries:
+      - todo_out
+    from: t7_1
+    to: t7_2
+  - carries:
+      - todo_out
+    from: t7_2
+    to: t7_3
+  - carries:
+      - todo_out
+    from: t8_1
+    to: t8_2
+  - carries:
+      - todo_out
+    from: t8_2
+    to: t8_3
+  - carries:
+      - todo_out
+    from: t8_3
+    to: t8_4
+  - carries:
+      - todo_out
+    from: t8_4
+    to: t8_5
+entries:
+  - t1_1
+  - t2_1
+  - t3_1
+  - t4_1
+  - t5_1
+  - t6_1
+  - t7_1
+  - t8_1
+graph: add-supply-chain-vertical
+metadata:
+  generated_from: /Users/chengsishi/finddata/openspec/changes/add-supply-chain-vertical/tasks.md
+  note: sections are independent branches; tasks inside a section are ordered. TODO placeholders must be resolved; the gate rejects them.
+nodes:
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.1 计费引擎落位与包命名（fd-erp-ledger-mcp 扩展 vs 独立包，按 `fd-package-identity` 终裁；dash/underscore 契约）"
+    effects:
+      - todo
+    id: t1_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.2 收费项与计价规则 schema：收费项/计价单位/组合规则/阶梯/封顶/最低消费；规则版本化 + 审批确认车道；冲突检测与覆盖缺失预警（未处置不上线）"
+    effects:
+      - todo
+    id: t1_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.3 事件驱动计费：业务事件实时计费 + 日终库存快照计费（存储费类）；计费时锁定规则版本与基础数据快照；stable_id 幂等（同事件不重不漏）"
+    effects:
+      - todo
+    id: t1_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.4 重算与红冲：红冲以反向明细关联原明细（复用账本冲正基因）；人工调整走审批留痕；无修改/删除已生成明细路径"
+    effects:
+      - todo
+    id: t1_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.5 四层穿透溯源（费用项→业务单据→作业事件→计费规则版本）+ 无出处费率拒绝 + 上线前历史数据试算对比"
+    effects:
+      - todo
+    id: t1_5
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.6 与账本内核衔接：计费结果以 proposal 经确认门落账（机器车道白名单科目）；日结批量 proposal 批次确认；provenance 戳（事件/快照/规则版本）"
+    effects:
+      - todo
+    id: t1_6
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.7 单测三层（规则冲突/幂等重推/红冲可溯）+ e2e（事件计费→日结→拍板→落账→重算红冲全链）+ 无出处费率拒绝实证"
+    effects:
+      - todo
+    id: t1_7
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.1 客户/供应商/商品三主档 MasterData 泛化（沿 stores.py 确认车道模式）：编码唯一、一次建档共用、多单位换算、条码规格"
+    effects:
+      - todo
+    id: t2_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.2 多级组织商品池与按客户/渠道授权可见可售；定制商品池（仅指定客户可见）"
+    effects:
+      - todo
+    id: t2_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.3 证照到期预警与联动管控（过期商品自动停售、供应商冻结），联动留痕"
+    effects:
+      - todo
+    id: t2_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.1 金蝶云星空 provider 接通验证（目录已有）：凭证/往来推送、日终双边对账、发票回写；凭据不出库验证"
+    effects:
+      - todo
+    id: t3_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.2 支付渠道商户侧连接器（只读流水 + 回调记录 + 日终渠道对账差异清单）"
+    effects:
+      - todo
+    id: t3_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.3 客户 WMS provider 评估（无目录 provider 按连接器 SDK 新增，跨仓立项；接口形态待客户确认）"
+    effects:
+      - todo
+    id: t3_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.4 跨仓流程：provider 新增在 open-connector-mt 独立 openspec 根立项，本仓只引用契约"
+    effects:
+      - todo
+    id: t3_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.1 采购编排：需求汇总 → 采购订单确认车道 → 推送供应商（门户/页面集）→ 到货预告 → 入库任务，全程留痕"
+    effects:
+      - todo
+    id: t4_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.2 信用额度记账扩展：额度占用/释放/回冲由账本记账；额度不足下单拦截并可解释"
+    effects:
+      - todo
+    id: t4_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.3 取价引擎 pack：客户价/活动价/券，规则带生效期与出处；下单自动取价可溯源"
+    effects:
+      - todo
+    id: t4_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.4 订单受理编排：信用校验 → 取价 → 订单确认 → 履约移交交付编排"
+    effects:
+      - todo
+    id: t4_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.1 仓配作业编排面：收货质检/上架策略/波次分拣/排线装车任务编排；执行在外部 WMS 与 PDA，台账单向同步、出入库事件回传、日终账实一致（差异清单驱动）"
+    effects:
+      - todo
+    id: t5_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.2 交付编排：按商品行履约路径（越库直发判断 → 直发指令；否则多仓货源分配 → 仓级出库指令）；运单轨迹/电子回单/全单物流视图"
+    effects:
+      - todo
+    id: t5_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.3 承运商执行回流：运单接收/月台预约/提货打卡/签收上报（门户/移动端页面集）"
+    effects:
+      - todo
+    id: t5_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.4 蓝图铸造：仓配分销舰队经 L3 构造器铸造流程走通（蓝图 → 批准 → 铸造）——验证：真舰 `fleet_1794073500018_nxujtw`（三岗 paused/错峰 06:10·06:40·07:20，target 逐一解析到 `sc-wh-*` person"
+    effects:
+      - todo
+    id: t5_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.1 miniapp 底座模板抽取（Taro4 工程 + 登录绑定 + 消息 + Daylight + 确认门交互模式；跨仓 paas 立项）——验证：**抽取物是契约不是新脚手架**（复用即复用，`pageset-base/v1` 底座面成文于 `paas/docs/page"
+    effects:
+      - todo
+    id: t6_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.2 UE 订货台页面集：商品检索/详情/下单/查单/对账单确认/开票申请/售后申请——验证：UE 12 页全部实装（paas 2.1–2.4 全勾；registry ↔ app.config 静态注册 diff=0；下单与对账单确认消费真 ConfirmGate，信用不足附占"
+    effects:
+      - todo
+    id: t6_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.3 SE 业务员台页面集：代客下单/CRM 线索拜访/预警处置（拍板席位移动呈现）"
+    effects:
+      - todo
+    id: t6_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.4 SP 供应商 + CP 承运商页面集：接单/发货反馈/对账/发票上传；运单/月台/提货/签收"
+    effects:
+      - todo
+    id: t6_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.5 配套后端 REST/WS 面（与 MCP 同源，无平行数据路径）；AI 助手入口接 fleet（经营问答/推荐）"
+    effects:
+      - todo
+    id: t6_5
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.6 合规复用：提审材料沿底座经验；BYOK 凭证零落库延伸验证——验证：三面审计留档（见状态注记；客户端存储/请求头/服务端日志均零外部系统凭证，连接器凭证在萬星连接器库内不出库）"
+    effects:
+      - todo
+    id: t6_6
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.1 指标口径统一定义（销售额/毛利率/库存周转等——单一出处）；报表与 AI 问答同源"
+    effects:
+      - todo
+    id: t7_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.2 四组报表 preset：采购与库存/销售与商品/收入成本毛利/结算与资金；阈值预警 → 处置任务闭环"
+    effects:
+      - todo
+    id: t7_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.3 科目映射 pack：仓配分销科目对齐内核通用科目（呈现层重算，换映射不改账）"
+    effects:
+      - todo
+    id: t7_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 8.1 单测：规则冲突拦截/快照重算一致/信用额度回冲/页面集授权组合/口径同源"
+    effects:
+      - todo
+    id: t8_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 8.2 e2e 全链：建档 → 采购 → 到货入库 → 订单 → 履约（直发+仓内两路径）→ 配送签收 → 计费 → 结算 → 金蝶对账，全程可计数验收"
+    effects:
+      - todo
+    id: t8_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 8.3 边界与 conformance：模板边界 AST 审计绿（零旁路账本/零直连库表/回写白名单）；`python3 fd-industry-data/scripts/conformance_gate.py` 过"
+    effects:
+      - todo
+    id: t8_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 8.4 模板四件套打包上架（多语言注释 zh/en 全过）+ appliance 三档适配 + 跨仓工件清单核对（open-connector-mt / paas 各自立项状态如实记录）——验证：六件资产全部在架（连接器包 `y8gnMHFMze-Mylsd6JXpkA`／科目映"
+    effects:
+      - todo
+    id: t8_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 8.5 如实口径落档：客户中性命名审计、资金/守界文案进官网与文档——**官网已上线实证**（源 `da4a4d2` 上 gitee main；`https://www.finddatatech.cloud/erp/` 与 `/zh/erp/` 均 200 且带新文案。锚点一期范"
+    effects:
+      - todo
+    id: t8_5
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+terminals:
+  - t1_7
+  - t2_3
+  - t3_4
+  - t4_4
+  - t5_4
+  - t6_6
+  - t7_3
+  - t8_5
+version: 1

@@ -1,0 +1,18 @@
+{
+ "change": "declare-health-min-rows",
+ "tasks_pending": 14,
+ "sections": 6,
+ "skeleton_errors": 15,
+ "roster_agents": 5,
+ "roster_instances": 9,
+ "host_definitions": 0,
+ "host_installed": false,
+ "roster_errors": 0,
+ "roster_warnings": 5,
+ "width": 6,
+ "critical_path": 5,
+ "ceiling": 2.0,
+ "may_dispatch_at_width": true,
+ "constraint_drops": 0,
+ "blocking": 0
+}

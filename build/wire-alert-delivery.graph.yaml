@@ -1,0 +1,371 @@
+edges:
+  - carries:
+      - todo_out
+    from: t1_1
+    to: t1_2
+  - carries:
+      - todo_out
+    from: t1_2
+    to: t1_3
+  - carries:
+      - todo_out
+    from: t1_3
+    to: t1_4
+  - carries:
+      - todo_out
+    from: t2_1
+    to: t2_2
+  - carries:
+      - todo_out
+    from: t2_2
+    to: t2_3
+  - carries:
+      - todo_out
+    from: t3_1
+    to: t3_2
+  - carries:
+      - todo_out
+    from: t3_2
+    to: t3_3
+  - carries:
+      - todo_out
+    from: t3_3
+    to: t3_5
+  - carries:
+      - todo_out
+    from: t3_5
+    to: t3_4
+  - carries:
+      - todo_out
+    from: t4_1
+    to: t14
+  - carries:
+      - todo_out
+    from: t14
+    to: t4_2
+  - carries:
+      - todo_out
+    from: t4_2
+    to: t4_3
+  - carries:
+      - todo_out
+    from: t4_3
+    to: t4_4
+  - carries:
+      - todo_out
+    from: t5_1
+    to: t5_2
+  - carries:
+      - todo_out
+    from: t5_2
+    to: t5_3
+  - carries:
+      - todo_out
+    from: t6_1
+    to: t6_2
+entries:
+  - t1_1
+  - t2_1
+  - t3_1
+  - t4_1
+  - t5_1
+  - t6_1
+graph: wire-alert-delivery
+metadata:
+  generated_from: /Users/chengsishi/finddata/openspec/changes/wire-alert-delivery/tasks.md
+  note: sections are independent branches; tasks inside a section are ordered. TODO placeholders must be resolved; the gate rejects them.
+nodes:
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.1 用真实出口发一条消息，记录回执 — 验证=回执落档；失败则改走 Plan B 并记录原因 → **已证（走 SMTP，不是 relay）**：阿里云 DirectMail `smtpdm.aliyun.com:465` 隐式 TLS，发件 `support@finddat"
+    effects:
+      - todo
+    id: t1_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.2 确认凭据在哪些执行环境可见 — 验证=逐个使用点列出 → **已逐点核实**：GitHub Actions 侧原本**一个 `FD_ALERT_SMTP_*` secret 都没设**（`gh secret list` 实查），这是 `no-smtp-config` 的真"
+    effects:
+      - todo
+    id: t1_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.3 定\"接收人\"并标注性质 — 验证=配置里有明确值，不是占位符 → **`1253774197@qq.com`（用户指定，2026-11-08）**，同时保留 `aloadtree@gmail.com`；已写在 `config/banking-alerts.json` 的 "
+    effects:
+      - todo
+    id: t1_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.4 **验证 CI 真能发（本地发成功不算）** — 验证=在 runner 侧证明 465 可达 → runner pod `fd-health-runner` 实测 `smtpdm.aliyun.com:465` 与 `100.64.0.3:30432` 均 `reach"
+    effects:
+      - todo
+    id: t1_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.1 五份 `*-alerts.json` 增加必填 `delivery`（`channel` / `to` / `min_severity`） — 验证=缺段时评估器**非零退出**并指名缺什么，不静默落文件 → **口径已实现**（`alerts_core/delivery"
+    effects:
+      - todo
+    id: t2_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.2 首次运行不回放历史：状态机读到\"从未发送过\"的历史 firing 时只报当前态 — 验证=构造 3 条历史 firing，首次运行只发 1 条当前态"
+    effects:
+      - todo
+    id: t2_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.3 `alerts_core.notify` 增加 relay 实现（保持 `dispatch` 的单条失败隔离语义） — 验证=注入一条发送失败，同批其它条仍送达且退出码非零"
+    effects:
+      - todo
+    id: t2_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.1 三态回执统一为 `sent / failed / skipped(reason)`，写进运行产物 — 验证=产物里能按线统计三态计数 → **已实现** `DeliveryReceipt`（三态互斥，`total` 可核）+ `as_dict()`"
+    effects:
+      - todo
+    id: t3_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.2 加死信判据：本轮存在 firing 且 `sent==0` → 进程非零退出（工作流判红） — 验证=断网/错 token 各造一次，工作流必须红 → **已实现** `judge()`：`firing>0 && sent==0` → `dead_letter`；stri"
+    effects:
+      - todo
+    id: t3_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.3 反向验证：本轮无 firing 时 `sent==0` 属正常，不得判红 — 验证=静默期跑一次，退出码 0 → **已实现并测试**；同时 `count_firing()` 不计 `resolved`、不达严重级门槛的也不计（防把恢复通知当成\"该响\"）"
+    effects:
+      - todo
+    id: t3_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.5 **未送达的告警下一轮是否重发**（已知取舍，当前=不重发） — 现状：状态机先前进、后投递，投递失败不会让下一次同越阈重发；补偿是 exit 4 + 报告 `notify` 段。若要求自动重发，须把状态推进改成\"按条送达成功才推进\"。验证=定稿后补两条用例（送达失败→下"
+    effects:
+      - todo
+    id: t3_5
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.4 反向验证（判据本身）：把判红条件临时打断，测试必须转红 — 验证=改 `if strict:`→`if False:` 后 `test_firing_with_zero_delivery_...` 确实失败；改回 12 条全绿（已做，未留改动）"
+    effects:
+      - todo
+    id: t3_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.1 农业线加排程（照 `flower-alerts.yml` 体裁；注意时区与上游跑完的间隔） — 验证=workflow_dispatch 手跑一次有产物，再等一次定时触发 → **workflow 已写好并本地验过**（`.github/workflows/agricul"
+    effects:
+      - todo
+    id: t4_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.1b 顺带修掉一个假绿：农业脚本崩溃退出码也是 1，与「有规则越阈=1」撞车 → 未捕获异常被当成正常越阈。已改为 2（崩溃）/ 3（缺 SELECT 权限，warning） — 验证=用错口令实测 exit=2；`--rules --events --dry-run` 实测"
+    effects:
+      - todo
+    id: t14
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.2 酒店线加排程：`restaurant_alerts.py --config config/hotel-alerts.json` — 验证=产物落在 `reports/hotel-alerts/<date>/` → **已上产（`01c5ffb`）**：`.github/w"
+    effects:
+      - todo
+    id: t4_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.3 餐饮线加排程 — 验证=同上 → **已上产（`01c5ffb`）**：`.github/workflows/restaurant-alerts.yml`，cron `47 11 * * *`（19:47 CST）；CI 实跑 `exit=0`（规则 4 条 fired、"
+    effects:
+      - todo
+    id: t4_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.4 花卉线补投递步骤（现在明确\"只落仓不推送\"） — 验证=一次真实越阈消息送达 → **已接线并上产**（`265678b`）：`cmd_rules` 把边缘触发的 `alert`/`recover` 交给新增的 `deliver_notifications()`（复用 `"
+    effects:
+      - todo
+    id: t4_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.1 修 `WANXING_SPIDER_HEAL_KEY` 的 401：GitHub secret 与 `secrets/fd-heal.env` 对齐 — 验证=`health_inspect.py --deliver --submit-new` 后 `last-run.j"
+    effects:
+      - todo
+    id: t5_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.2 工单链凭据失效不得静默：连续 401 达到阈值时产出告警 — 验证=用错 key 跑两次，告警出现"
+    effects:
+      - todo
+    id: t5_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.3 评估器沉默元告警：某线连续 N 次未运行，或源有更新但连续 N 次 0 事件 — 验证=停用一个排程，告警出现"
+    effects:
+      - todo
+    id: t5_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.1 逐线如实记录：本期\"有真实触发样本并送达\"的规则 / \"无样本\"的规则 — 验证=表格落档，不以构造样本充数"
+    effects:
+      - todo
+    id: t6_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.2 `openspec validate wire-alert-delivery --strict` 绿 — 验证=命令输出"
+    effects:
+      - todo
+    id: t6_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+terminals:
+  - t1_4
+  - t2_3
+  - t3_4
+  - t4_4
+  - t5_3
+  - t6_2
+version: 1

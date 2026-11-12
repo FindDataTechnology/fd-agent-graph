@@ -1,0 +1,95 @@
+# 本工作区真实的 coding roster。
+# 描述的是这台宿主上实际存在的 agent 能力，不是设想。
+roster: finddata-coding
+version: 1
+template: ../examples/coding-template.yaml
+
+agents:
+  - id: planner
+    role: 读 change 的 tasks，按仓/目录切成互不重叠的片
+    template_node: planner
+    # 宿主按 agent 能执行的三个维度：
+    tools: [Read, Grep, Bash]
+    model: ""            # 留空 = 用会话默认
+    thought_level: high
+    # 宿主执行不了的维度（只能是声明 + 静态校验）：
+    skills: [openspec-propose]
+    mcp: [{server: graphify}, {server: openspec}]
+    memory_scope: shared
+    authoritative_facts: [change-scope]
+    parallel: 1
+    inputs:
+      change: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+
+  - id: explorer
+    role: 只读侦察：找源码位置、查外部资料
+    template_node: worker
+    tools: [Read, Grep, Glob, Bash, WebSearch, WebFetch, TodoWrite]
+    model: ""
+    thought_level: medium
+    skills: []
+    mcp: [{server: graphify}, {server: context7}]
+    memory_scope: private
+    parallel: 2
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      patch: {type: string}
+      file_ownership: {type: array, items: {type: string}, constraint: true}
+      review_note: {type: array, items: {type: string}, constraint: true}
+
+  - id: implementer
+    role: 在自己那片里改代码，带回文件归属与审查要点
+    template_node: worker
+    tools: [Read, Grep, Glob, Bash, Write, Edit, MultiEdit]
+    model: ""
+    thought_level: high
+    skills: [openspec-apply-change]
+    mcp: [{server: graphify}, {server: openspec}, {server: ssh-mcp-server}]
+    memory_scope: private
+    parallel: 4
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      patch: {type: string}
+      file_ownership: {type: array, items: {type: string}, constraint: true}
+      review_note: {type: array, items: {type: string}, constraint: true}
+
+  - id: verifier
+    role: 只看合入结果是否满足验证条件，不改任何东西
+    template_node: verify
+    tools: [Read, Grep, Bash]
+    model: ""
+    thought_level: max
+    skills: []
+    mcp: []
+    memory_scope: private
+    parallel: 1
+    inputs:
+      merged: {type: string}
+    outputs:
+      verdict: {type: boolean}
+
+  - id: merger
+    role: 承接各路口径与文件归属，显式解决冲突
+    template_node: merge
+    tools: [Read, Grep, Bash, Write, Edit]
+    model: ""
+    thought_level: max
+    skills: [openspec-apply-change]
+    mcp: [{server: graphify}, {server: openspec}]
+    memory_scope: shared
+    authoritative_facts: [merge-decision]
+    parallel: 1
+    inputs:
+      patch: {type: string}
+      scope: {type: object}
+      file_ownership: {type: array, items: {type: string}}
+      review_note: {type: array, items: {type: string}}
+    outputs:
+      merged: {type: string}

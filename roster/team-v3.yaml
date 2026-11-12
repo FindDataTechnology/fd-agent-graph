@@ -1,0 +1,157 @@
+# team-v3 班底：在 v2 的四个角色上加了两个，加的依据是实测故障，不是"更全面"。
+roster: team-v3
+version: 1
+template: ../examples/team-v3.yaml
+
+agents:
+  # ---- 新增：探路者 -------------------------------------------------------
+  # 依据：上游一抖，多路编排整轮死（两次里所有路由零文件）。宽度不该是常数。
+  - id: relay
+    role: 量模型路径，给出本轮并发宽度；量不过就串行，不硬铺
+    template_node: relay
+    tools: [Read, Bash]
+    model: ""
+    thought_level: low          # 它只跑探测并读数字，不需要深思
+    skills: []
+    mcp: []
+    memory_scope: shared        # 宽度是全场共享的事实
+    parallel: 1
+    inputs:
+      task: {type: string}
+    outputs:
+      preflight: {type: object, constraint: true}
+      width: {type: number, constraint: true}
+
+  # ---- 存量 ---------------------------------------------------------------
+  - id: planner
+    role: 按宽度切片，写死文件归属、退出码与测试口径
+    template_node: planner
+    tools: [Read, Grep, Glob, Bash]
+    model: ""
+    thought_level: high
+    skills: [openspec-apply-change]
+    mcp: [{server: openspec}]
+    memory_scope: private
+    parallel: 1
+    inputs:
+      task: {type: string}
+      preflight: {type: object}
+      width: {type: number}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+      test_policy: {type: object, constraint: true}
+
+  # ---- 新增：契约官 -------------------------------------------------------
+  # 依据：两路各写一套断言（"no change" vs "+0 -0 (~2)"），合并点只统一代码不统一语义。
+  # 它先定机器可读的接口契约，实现/合并/验收三方都从这一个文件取值。
+  - id: contractor
+    role: 把公开接口写成机器可读契约——名字、参数、返回形状、边界语义，只此一份
+    template_node: contractor
+    tools: [Read, Write]
+    model: ""
+    thought_level: max          # 契约错了，三路一起错
+    skills: []
+    mcp: []
+    memory_scope: shared        # 契约必须三方同源
+    parallel: 1
+    inputs:
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      contract: {type: object, constraint: true}
+
+  - id: implementer
+    role: 在自己那片里按契约写实现，回报裸导出名与实际写入的文件
+    template_node: impl
+    tools: [Read, Grep, Glob, Bash, Write, Edit]
+    model: ""
+    thought_level: high
+    skills: []
+    mcp: []
+    memory_scope: private
+    parallel: 2
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+      contract: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+
+  # ---- 新增：守门者 -------------------------------------------------------
+  # 依据：一路报 completed 却零文件，合并点差点按空交付收工；另有一路交了空 test/。
+  # 它只验"东西在不在"，不评价好坏——所以只读、只跑，没有写权限。
+  - id: sentry
+    role: 合并前守门：标记在不在、文件是否真存在且非空、导出是否真在源码里
+    template_node: sentry
+    tools: [Read, Bash]
+    model: ""
+    thought_level: medium
+    skills: []
+    mcp: []
+    memory_scope: private
+    parallel: 1
+    inputs:
+      contract: {type: object}
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+    outputs:
+      gate_ok: {type: boolean, constraint: true}
+      missing: {type: array, items: {type: string}, constraint: true}
+
+  - id: merger
+    role: 按契约逐条比对后写入口；缺什么记 dropped 并继续，不阻塞
+    template_node: merge
+    tools: [Read, Write]
+    model: ""
+    thought_level: max
+    skills: []
+    mcp: []
+    memory_scope: private
+    parallel: 1
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+      contract: {type: object}
+      gate_ok: {type: boolean}
+      missing: {type: array, items: {type: string}}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+
+  - id: verifier
+    role: 跑门与测试，报真数字；dropped 非空或 gate_ok 为假一律判不通过
+    template_node: verify
+    tools: [Read, Bash]
+    model: ""
+    thought_level: max
+    skills: []
+    mcp: []
+    memory_scope: private
+    parallel: 1
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      missing: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+      contract: {type: object}
+      gate_ok: {type: boolean}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      test_count: {type: number, constraint: true}
+      cli_seconds: {type: number, constraint: true}
+      cli_output_lines: {type: number, constraint: true}
+      platform_paths_ok: {type: boolean, constraint: true}

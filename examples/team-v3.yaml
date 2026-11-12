@@ -1,0 +1,155 @@
+graph: team-v3
+version: 1
+entries: [relay]
+terminals: [verify]
+inputs:
+  task: {type: string}
+
+# v3：相对 v2 新增两个成员，加谁、为什么，都对着实测故障：
+#
+#  · relay（探路者）——上游一抖，多路编排就整轮死（两次里所有路由零文件）。
+#    它先量网关，再给宽度；量不过就串行。宽度由它给，不是常数。
+#
+#  · contractor（契约官）——两路各写一套断言：一处断言 "no change"、一处断言
+#    "+0 -0 (~2)"，合并点只统一了代码、没统一语义，最后靠人裁决。
+#    它在实现开始前把公开接口写成机器可读的 .crew/contract.json（名字 + 返回形状 +
+#    语义），实现、合并、验收三方都从这一个文件取值，谁都不许自己发明期望。
+#
+#  · sentry（守门者）——一路报 completed 却是零文件，合并点差点按空交付收工。
+#    它只做一件事：标记存在、标记里的文件真实存在且非空、导出真的在源码里。
+#    不过就挡在合并之前，而不是等验收者事后发现。
+nodes:
+  - id: relay
+    kind: agent
+    effects: [read]
+    idempotent: true
+    cost: 2
+    tools: [Read, Bash]
+    inputs:
+      task: {type: string}
+    outputs:
+      preflight: {type: object, constraint: true}
+      width: {type: number, constraint: true}
+    description: 量模型路径，把失败率折成并发宽度；量不过就串行，不硬铺
+
+  - id: planner
+    kind: agent
+    effects: [read]
+    idempotent: true
+    cost: 2
+    tools: [Read, Grep, Bash]
+    inputs:
+      task: {type: string}
+      preflight: {type: object}
+      width: {type: number}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+      test_policy: {type: object, constraint: true}
+    description: 按 relay 给的宽度切片，写死文件归属与退出码/测试口径
+
+  - id: contractor
+    kind: agent
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      contract: {type: object, constraint: true}
+    description: 把公开接口写成机器可读契约——名字、参数、返回形状、边界语义
+
+  - id: impl
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Glob, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+      contract: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: 只写自己那片，按契约实现；回报裸导出名与真实写入的文件
+
+  - id: sentry
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      contract: {type: object}
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+    outputs:
+      gate_ok: {type: boolean, constraint: true}
+      missing: {type: array, items: {type: string}, constraint: true}
+    description: 合并前守门：标记在不在、文件是否真存在且非空、导出是否真在源码里
+
+  - id: merge
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+      contract: {type: object}
+      gate_ok: {type: boolean}
+      missing: {type: array, items: {type: string}}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: 按契约逐条比对后写入口；sentry 报的 missing 直接进 dropped，不许阻塞
+
+  - id: verify
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      missing: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+      contract: {type: object}
+      gate_ok: {type: boolean}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      test_count: {type: number, constraint: true}
+      cli_seconds: {type: number, constraint: true}
+      cli_output_lines: {type: number, constraint: true}
+      platform_paths_ok: {type: boolean, constraint: true}
+    description: 跑门与测试，报真数字；dropped 或 gate_ok 为假一律判不通过
+
+edges:
+  - {from: relay, to: planner, carries: [preflight, width]}
+  - {from: planner, to: contractor, carries: [scope, exit_contract]}
+  - {from: planner, to: impl, carries: [tasks, scope, exit_contract, test_policy]}
+  - {from: contractor, to: impl, carries: [contract]}
+  - {from: contractor, to: sentry, carries: [contract]}
+  - {from: impl, to: sentry, carries: [exports, files_written, notes]}
+  - {from: impl, to: merge, carries: [exports, files_written, notes]}
+  - {from: planner, to: merge, carries: [scope, exit_contract, test_policy]}
+  - {from: contractor, to: merge, carries: [contract]}
+  - {from: sentry, to: merge, carries: [gate_ok, missing]}
+  - {from: sentry, to: verify, carries: [gate_ok, missing]}
+  - {from: merge, to: verify, carries: [export_list, dropped]}
+  - {from: planner, to: verify, carries: [scope, exit_contract, test_policy]}
+  - {from: contractor, to: verify, carries: [contract]}

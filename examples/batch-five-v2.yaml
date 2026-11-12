@@ -1,0 +1,301 @@
+graph: batch-five-v2
+version: 1
+entries: [planner]
+terminals: [verify_salvage]
+inputs:
+  batch: {type: string}
+
+# v2（2026-11-09）：沿用 width 5，但验收口径补了三条实测教训——
+#   cli_seconds / cli_output_lines：上一轮递归遍历挂死 90 秒、以及工具"退出 0 却一字不吐"，
+#     两种故障 `node --test` 全都看不见，只有真跑 CLI 才暴露；
+#   platform_paths_ok：两次平台差异都是测试里写死 POSIX 绝对路径，假 fs 的 key 没归一化。
+# width = 5：同一超步 5 个实现者。来源是用户指示"并发调到 5"，不是拍脑袋。
+# 但 5 必须是 5 份**互不相交的真活**，否则就是空转。本批五路：
+#   1 trend-entry   fd-disk-trend 入口缺失（跑文件静默，测试却全绿）
+#   2 trend-honest  fd-disk-trend 数据不足时要说 unknown，不许静默
+#   3 portmap-diff  fd-portmap 增加 --diff，点名"新出现的监听"（暴露面变化）
+#   4 backup-config fd-backup-age 增加 --config 与默认数据集
+#   5 backup-guard  fd-backup-age 对 --dataset 写错要报错而不是静默跳过
+#
+# 沿用的三条实测结论：
+#   - verify 必须输出 test_count（空 test/ 会让 rc=0 变成假绿）
+#   - merge 缺标记记 dropped、不阻塞
+#   - rollup 可路由到 salvage，salvage 的产物由 verify_salvage 再过一遍
+nodes:
+  - id: planner
+    kind: agent
+    effects: [read]
+    idempotent: true
+    cost: 2
+    inputs:
+      batch: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+      test_policy: {type: object, constraint: true}
+    description: 把五路活切成互不相交的文件集，并写死"跑文件必须真的输出"这条判据
+
+  - id: impl_trend_entry
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: 补 cli.js 入口守卫；跑文件必须产出，不许静默退出 0
+  - id: impl_trend_honest
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: 少于 2 个点时明确说 insufficient data，而不是不给结论
+  - id: impl_portmap_diff
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: 新增 diff 模块，比对两次快照，点名新出现的监听
+  - id: impl_backup_config
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: 配置加载 + 默认数据集（D:\fd-archive）
+  - id: impl_backup_guard
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: 参数错误必须退非零并点名；不许跳过坏数据集当没事
+
+  - id: merge_trend
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: trend 两路（entry + honest）扇入
+  - id: merge_portmap
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: portmap 单路也走 merge，保持每单元都有扇入检查
+  - id: merge_backup
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: backup 两路扇入
+
+  - id: verify_trend
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      test_count: {type: number, constraint: true}
+      cli_seconds: {type: number, constraint: true}
+      cli_output_lines: {type: number, constraint: true}
+      platform_paths_ok: {type: boolean, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+  - id: verify_portmap
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      test_count: {type: number, constraint: true}
+      cli_seconds: {type: number, constraint: true}
+      cli_output_lines: {type: number, constraint: true}
+      platform_paths_ok: {type: boolean, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+  - id: verify_backup
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      test_count: {type: number, constraint: true}
+      cli_seconds: {type: number, constraint: true}
+      cli_output_lines: {type: number, constraint: true}
+      platform_paths_ok: {type: boolean, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+
+  - id: rollup
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      evidence: {type: object}
+      test_count: {type: number}
+      cli_seconds: {type: number}
+      cli_output_lines: {type: number}
+      platform_paths_ok: {type: boolean}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      batch_verdict: {type: boolean}
+      salvage_needed: {type: array, items: {type: string}, constraint: true}
+      cli_seconds: {type: number, constraint: true}
+      cli_output_lines: {type: number, constraint: true}
+      platform_paths_ok: {type: boolean, constraint: true}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+      test_policy: {type: object, constraint: true}
+  - id: salvage
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      salvage_needed: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      repaired: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+  - id: verify_salvage
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      repaired: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      salvage_needed: {type: array, items: {type: string}}
+      cli_seconds: {type: number}
+      cli_output_lines: {type: number}
+      platform_paths_ok: {type: boolean}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      final_verdict: {type: boolean}
+      test_count: {type: number, constraint: true}
+
+edges:
+  - {from: planner, to: impl_trend_entry, carries: [tasks, scope]}
+  - {from: planner, to: impl_trend_honest, carries: [tasks, scope]}
+  - {from: planner, to: impl_portmap_diff, carries: [tasks, scope]}
+  - {from: planner, to: impl_backup_config, carries: [tasks, scope]}
+  - {from: planner, to: impl_backup_guard, carries: [tasks, scope]}
+  - {from: impl_trend_entry, to: merge_trend, carries: [exports, files_written, notes]}
+  - {from: impl_trend_honest, to: merge_trend, carries: [exports, files_written, notes]}
+  - {from: impl_portmap_diff, to: merge_portmap, carries: [exports, files_written, notes]}
+  - {from: impl_backup_config, to: merge_backup, carries: [exports, files_written, notes]}
+  - {from: impl_backup_guard, to: merge_backup, carries: [exports, files_written, notes]}
+  - {from: planner, to: merge_trend, carries: [scope, exit_contract, test_policy]}
+  - {from: planner, to: merge_portmap, carries: [scope, exit_contract, test_policy]}
+  - {from: planner, to: merge_backup, carries: [scope, exit_contract, test_policy]}
+  - {from: merge_trend, to: verify_trend, carries: [export_list, dropped]}
+  - {from: merge_portmap, to: verify_portmap, carries: [export_list, dropped]}
+  - {from: merge_backup, to: verify_backup, carries: [export_list, dropped]}
+  - {from: planner, to: verify_trend, carries: [scope, exit_contract, test_policy]}
+  - {from: planner, to: verify_portmap, carries: [scope, exit_contract, test_policy]}
+  - {from: planner, to: verify_backup, carries: [scope, exit_contract, test_policy]}
+  - {from: verify_trend, to: rollup, carries: [export_list, dropped, evidence, test_count, cli_seconds, cli_output_lines, platform_paths_ok]}
+  - {from: verify_portmap, to: rollup, carries: [export_list, dropped, evidence, test_count, cli_seconds, cli_output_lines, platform_paths_ok]}
+  - {from: verify_backup, to: rollup, carries: [export_list, dropped, evidence, test_count, cli_seconds, cli_output_lines, platform_paths_ok]}
+  - {from: planner, to: rollup, carries: [scope, exit_contract, test_policy]}
+  - {from: rollup, to: salvage, carries: [salvage_needed, scope, exit_contract, test_policy]}
+  - {from: salvage, to: verify_salvage, carries: [repaired, notes]}
+  - {from: rollup, to: verify_salvage, carries: [scope, exit_contract, test_policy, salvage_needed, cli_seconds, cli_output_lines, platform_paths_ok]}

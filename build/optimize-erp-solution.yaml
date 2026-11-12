@@ -1,0 +1,114 @@
+# optimize-erp-solution 调度图
+#
+# 形状依据：三个互不重叠的写入域（模板仓 / 账本内核 / 基础设施+纵向 API）。
+# 模板仓内的四组任务共用 cli.py 与 scripts/，故意收成一条深链而不是假并行；
+# 账本内核与基础设施两条支线与之无文件交集，可同时跑。
+# 并发上限 = 3 条支线（width）；speed_up_ceiling 由 metrics 读出。
+
+inputs:
+  change:
+    type: string
+
+nodes:
+  - id: planner
+    kind: agent
+    description: 读 change 的 proposal/specs/design/tasks，按仓切出互不重叠的写入域并派发
+    effects: [read]
+    idempotent: true
+    inputs:
+      change: { type: string }
+    outputs:
+      scope: { type: string, constraint: true }
+      tasks: { type: array, items: { type: string } }
+
+  - id: w1_coverage
+    kind: agent
+    description: 模板仓第一段：功能点覆盖矩阵、证据解析、归类、脱敏导入、模板覆盖声明派生、分层导出
+    effects: [read, write]
+    idempotent: true
+    inputs:
+      scope: { type: string }
+      tasks: { type: array, items: { type: string } }
+    outputs:
+      file_ownership: { type: string, constraint: true }
+      patch: { type: string }
+      review_note: { type: string, constraint: true }
+      scope: { type: string }
+      tasks: { type: array, items: { type: string } }
+
+  - id: w1_delivery
+    kind: agent
+    description: 模板仓第二段（串在第一段之后，因共用 cli.py 与 scripts/）：四件套脚手架、版本对拍、发布记录、连接器三态、对外口径 gate
+    effects: [read, write]
+    idempotent: true
+    inputs:
+      scope: { type: string }
+      tasks: { type: array, items: { type: string } }
+      patch: { type: string, required: false }
+      file_ownership: { type: string, required: false }
+      review_note: { type: string, required: false }
+    outputs:
+      delivery: { type: string }
+      file_ownership: { type: string, constraint: true }
+      review_note: { type: string, constraint: true }
+
+  - id: w2_ledger
+    kind: agent
+    description: 账本内核支线：迁移 0005、多币种折算、日终快照工具与排程、覆盖缺失阻断、全链 e2e、指标与日志、对账 worker 续跑
+    effects: [read, write, network]
+    idempotent: true
+    inputs:
+      scope: { type: string }
+      tasks: { type: array, items: { type: string } }
+    outputs:
+      ledger: { type: string }
+      file_ownership: { type: string, constraint: true }
+      review_note: { type: string, constraint: true }
+
+  - id: w3_infra_api
+    kind: agent
+    description: 基础设施与纵向 API 支线：账本库备份 Job 与完整性与恢复演练、对账入口代理、501 端点清单
+    effects: [read, write]
+    idempotent: true
+    inputs:
+      scope: { type: string }
+      tasks: { type: array, items: { type: string } }
+    outputs:
+      infra_api: { type: string }
+      file_ownership: { type: string, constraint: true }
+      review_note: { type: string, constraint: true }
+
+  - id: join
+    kind: agent
+    description: 合流：承接三路 file_ownership 与 review_note，显式解决交叉引用（覆盖矩阵↔能力清单↔挂账清单↔连接器状态）
+    effects: [read, write]
+    idempotent: true
+    inputs:
+      delivery: { type: string }
+      ledger: { type: string }
+      infra_api: { type: string }
+      file_ownership: { type: string, required: false }
+      review_note: { type: string, required: false }
+    outputs:
+      merged: { type: string }
+      conflicts: { type: array, items: { type: string } }
+
+  - id: verifier
+    kind: agent
+    description: 只读验收：四条回归命令、四份清单交叉一致、交付自检演练、归档顺序检查
+    effects: [read]
+    idempotent: true
+    inputs:
+      merged: { type: string }
+    outputs:
+      verdict: { type: string }
+
+edges:
+  - { from: planner, to: w1_coverage, carries: [scope, tasks] }
+  - { from: planner, to: w2_ledger, carries: [scope, tasks] }
+  - { from: planner, to: w3_infra_api, carries: [scope, tasks] }
+  - { from: w1_coverage, to: w1_delivery, carries: [scope, tasks, patch, file_ownership, review_note] }
+  - { from: w1_delivery, to: join, carries: [delivery, file_ownership, review_note] }
+  - { from: w2_ledger, to: join, carries: [ledger, file_ownership, review_note] }
+  - { from: w3_infra_api, to: join, carries: [infra_api, file_ownership, review_note] }
+  - { from: join, to: verifier, carries: [merged] }

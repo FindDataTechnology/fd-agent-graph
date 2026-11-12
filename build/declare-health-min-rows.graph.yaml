@@ -1,0 +1,252 @@
+edges:
+  - carries:
+      - todo_out
+    from: t1_1
+    to: t1_2
+  - carries:
+      - todo_out
+    from: t2_1
+    to: t2_2
+  - carries:
+      - todo_out
+    from: t2_2
+    to: t2_3
+  - carries:
+      - todo_out
+    from: t3_1
+    to: t3_2
+  - carries:
+      - todo_out
+    from: t4_1
+    to: t4_2
+  - carries:
+      - todo_out
+    from: t5_1
+    to: t5_2
+  - carries:
+      - todo_out
+    from: t5_2
+    to: t5_3
+  - carries:
+      - todo_out
+    from: t6_1
+    to: t6_2
+  - carries:
+      - todo_out
+    from: t6_2
+    to: t6_3
+entries:
+  - t1_1
+  - t2_1
+  - t3_1
+  - t4_1
+  - t5_1
+  - t6_1
+graph: declare-health-min-rows
+metadata:
+  generated_from: /Users/chengsishi/finddata/openspec/changes/declare-health-min-rows/tasks.md
+  note: sections are independent branches; tasks inside a section are ordered. TODO placeholders must be resolved; the gate rejects them.
+nodes:
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.1 确认 `spiders/*/manifest.yaml` 当前无其它会话在改（`git status`） — 验证=改动前快照落档；有并发则等"
+    effects:
+      - todo
+    id: t1_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.2 把 A/B/C/D/E 五桶清单导出成一份可复核的表格（含每源成功次数、0 行次数、p10、p50） — 验证=表格里的数能被 baseline 文档的 SQL 复算出来"
+    effects:
+      - todo
+    id: t1_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.1 逐源加 `min_rows_per_run`，值取 p10（下限 1）；被 `limit` 截断的源（p50≈limit）取 limit 的 20–30% — 验证=每个值旁注明\"p10=… / limit=…\"的取值依据"
+    effects:
+      - todo
+    id: t2_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.2 `validate_manifests.py` 全绿（字段类型/范围校验） — 验证=脚本输出"
+    effects:
+      - todo
+    id: t2_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.3 抽查 3 个源真实跑一次，确认未误报 — 验证=巡检产物里这 3 个源无\"行数不足\"工单"
+    effects:
+      - todo
+    id: t2_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.1 声明阈值为 p10（多为 0→取 1） — 验证=同上"
+    effects:
+      - todo
+    id: t3_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.2 观察一周：统计这 9 个源的误报次数 — 验证=误报率落档；>20% 的源回退为不声明"
+    effects:
+      - todo
+    id: t3_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.1 只补/核对 `data_period`，并确认它们在 `reconcile_absent` 的覆盖范围内 — 验证=周期缺失规则对它们生效（造一次超期，出单）"
+    effects:
+      - todo
+    id: t4_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.2 明确记一笔\"本桶不声明 `min_rows_per_run`，理由=增量语义\" — 验证=写入 baseline 文档，防后来人\"补齐\""
+    effects:
+      - todo
+    id: t4_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.1 D 桶 59 个源进\"待定\"清单（成功次数 ≥5 再判），不现在声明 — 验证=清单落档且带当前样本数"
+    effects:
+      - todo
+    id: t5_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.2 C 桶：`akshare` 按子命令拆分判定（它是子适配器集合，375 次成功里 206 次 0 行） — 验证=给出按 command 维度的 0 行占比 → **已判**：`crawl_runs` 无子命令维度（`metrics`/`identity_alias` 全"
+    effects:
+      - todo
+    id: t5_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.3 C 桶：`legal-sources-report`、`dispatch-smoke` 的语义由人定（冒烟任务 0 行属正常） — 验证=结论落档"
+    effects:
+      - todo
+    id: t5_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.1 反向验证：人为把某个 A 桶源的产出压到 0，巡检必须出单 — 验证=工单出现，且类别是行数不足"
+    effects:
+      - todo
+    id: t6_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.2 复核：全量跑一次巡检，A/B 桶源 0 条\"行数不足\"误报 — 验证=巡检产物统计"
+    effects:
+      - todo
+    id: t6_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.3 `openspec validate declare-health-min-rows --strict` 绿 — 验证=命令输出"
+    effects:
+      - todo
+    id: t6_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+terminals:
+  - t1_2
+  - t2_3
+  - t3_2
+  - t4_2
+  - t5_3
+  - t6_3
+version: 1

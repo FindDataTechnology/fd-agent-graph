@@ -1,0 +1,19 @@
+{
+ "change": "add-win-health-watchdog",
+ "guard_failures": 0,
+ "tasks_pending": 0,
+ "sections": 5,
+ "skeleton_errors": 15,
+ "roster_agents": 5,
+ "roster_instances": 9,
+ "host_definitions": 5,
+ "host_installed": true,
+ "roster_errors": 0,
+ "roster_warnings": 0,
+ "width": 6,
+ "critical_path": 5,
+ "ceiling": 2.0,
+ "may_dispatch_at_width": true,
+ "constraint_drops": 0,
+ "blocking": 0
+}

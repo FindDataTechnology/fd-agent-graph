@@ -1,0 +1,57 @@
+graph: package-audit
+version: 1
+entries: [planner]
+terminals: [verify]
+inputs:
+  scope: {type: string}
+nodes:
+  - id: planner
+    kind: agent
+    effects: [read]
+    idempotent: true
+    inputs: {scope: {type: string}}
+    outputs:
+      slices: {type: array, items: {type: string}}
+      criteria: {type: array, items: {type: string}, constraint: true}
+  - id: auditor
+    kind: agent
+    effects: [read]
+    idempotent: true
+    inputs:
+      slices: {type: array, items: {type: string}}
+      criteria: {type: array, items: {type: string}}
+    outputs:
+      findings: {type: array, items: {type: string}}
+      file_ownership: {type: array, items: {type: string}, constraint: true}
+      review_note: {type: array, items: {type: string}, constraint: true}
+  - id: merge
+    kind: join
+    effects: [read]
+    idempotent: true
+    cost: 2
+    inputs:
+      findings: {type: array, items: {type: string}}
+      criteria: {type: array, items: {type: string}}
+      file_ownership: {type: array, items: {type: string}}
+      review_note: {type: array, items: {type: string}}
+    outputs:
+      merged: {type: array, items: {type: string}}
+  - id: verify
+    kind: verify
+    effects: [read]
+    idempotent: true
+    inputs: {merged: {type: array, items: {type: string}}}
+    outputs: {verdict: {type: boolean}}
+edges:
+  - from: planner
+    to: auditor
+    carries: [slices, criteria]
+  - from: planner
+    to: merge
+    carries: [criteria]
+  - from: auditor
+    to: merge
+    carries: [findings, file_ownership, review_note]
+  - from: merge
+    to: verify
+    carries: [merged]

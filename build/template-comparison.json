@@ -1,0 +1,46 @@
+[
+ {
+  "label": "V1 现状：12 路扇出，merge 只收 patch（约束标记了）",
+  "workers": 12,
+  "width": 12,
+  "critical_path": 7,
+  "total_cost": 18,
+  "ceiling": 2.571,
+  "errors": 0,
+  "warnings": 24,
+  "constraint_drops": 24,
+  "dispatch_12_permitted": true,
+  "dispatch_12_warning": true,
+  "findings": [
+   "graph.topology.constraint-dropped"
+  ]
+ },
+ {
+  "label": "V2 模板：6 路扇出，merge 消费全部约束",
+  "workers": 6,
+  "width": 6,
+  "critical_path": 5,
+  "total_cost": 10,
+  "ceiling": 2.0,
+  "errors": 0,
+  "warnings": 0,
+  "constraint_drops": 0,
+  "dispatch_12_permitted": false,
+  "dispatch_12_warning": false,
+  "findings": []
+ },
+ {
+  "label": "V3 反例：6 路，约束不标记（同样的丢失，门禁看不见）",
+  "workers": 6,
+  "width": 6,
+  "critical_path": 5,
+  "total_cost": 10,
+  "ceiling": 2.0,
+  "errors": 0,
+  "warnings": 0,
+  "constraint_drops": 0,
+  "dispatch_12_permitted": false,
+  "dispatch_12_warning": false,
+  "findings": []
+ }
+]

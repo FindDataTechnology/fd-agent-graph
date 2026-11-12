@@ -1,0 +1,442 @@
+edges:
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w01
+  - carries:
+      - patch
+    from: w01
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w02
+  - carries:
+      - patch
+    from: w02
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w03
+  - carries:
+      - patch
+    from: w03
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w04
+  - carries:
+      - patch
+    from: w04
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w05
+  - carries:
+      - patch
+    from: w05
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w06
+  - carries:
+      - patch
+    from: w06
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w07
+  - carries:
+      - patch
+    from: w07
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w08
+  - carries:
+      - patch
+    from: w08
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w09
+  - carries:
+      - patch
+    from: w09
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w10
+  - carries:
+      - patch
+    from: w10
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w11
+  - carries:
+      - patch
+    from: w11
+    to: join
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w12
+  - carries:
+      - patch
+    from: w12
+    to: join
+  - carries:
+      - merged
+    from: join
+    to: verifier
+entries:
+  - planner
+graph: dispatch-12-way
+inputs:
+  change:
+    type: string
+metadata:
+  models: AGENTS.md 里的固定 12 路并发派发，按实际形状建图
+nodes:
+  - description: 把 change 的 tasks 切成 N 份并派发
+    effects:
+      - read
+    id: planner
+    idempotent: true
+    inputs:
+      change:
+        type: string
+    kind: agent
+    outputs:
+      scope:
+        constraint: true
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+  - description: 第 1 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w01
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 2 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w02
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 3 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w03
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 4 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w04
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 5 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w05
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 6 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w06
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 7 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w07
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 8 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w08
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 9 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w09
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 10 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w10
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 11 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w11
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 12 路 subagent：实现自己那一片
+    effects:
+      - write
+      - network
+    id: w12
+    idempotent: true
+    inputs:
+      scope:
+        type: string
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 合并 12 路产物
+    effects:
+      - write
+    id: join
+    idempotent: true
+    inputs:
+      patch:
+        type: string
+    kind: join
+    outputs:
+      merged:
+        type: string
+  - description: 验证合并结果
+    effects:
+      - read
+    id: verifier
+    idempotent: true
+    inputs:
+      merged:
+        type: string
+    kind: verify
+    outputs:
+      verdict:
+        type: boolean
+terminals:
+  - verifier
+version: 1

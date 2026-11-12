@@ -1,0 +1,86 @@
+# win-health v0.2 班底。三路实现，按文件体量切，不是按"概念"切——
+# 上一轮 338 行的 cli.js 一路拖了整条链。
+roster: win-health-v2
+version: 1
+template: ../examples/win-health-v2.yaml
+
+agents:
+  - id: planner
+    role: 切三片互不相交的文件集，并定下完成标记的路径与必填字段
+    template_node: planner
+    tools: [Read, Grep, Glob, Bash]
+    model: ""
+    thought_level: high
+    skills: [openspec-apply-change]
+    mcp: [{server: openspec}]
+    memory_scope: private
+    parallel: 1
+    inputs:
+      change: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+      branch_plan: {type: object, constraint: true}
+
+  - id: implementer
+    role: 只写自己那片；落完成标记才算完成
+    template_node: implement
+    tools: [Read, Grep, Glob, Bash, Write, Edit]
+    model: ""
+    thought_level: high
+    skills: []
+    mcp: []
+    memory_scope: private
+    parallel: 3
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+      branch_plan: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      branch_status: {type: object, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+
+  - id: merger
+    role: 承接三路导出；缺哪路写进 dropped 并继续，不阻塞
+    template_node: merge
+    tools: [Read, Write]
+    model: ""
+    thought_level: max
+    skills: []
+    mcp: []
+    memory_scope: private
+    parallel: 1
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      branch_status: {type: object}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      merged: {type: string, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+
+  - id: verifier
+    role: 只跑命令看结果，报真实退出码；dropped 非空必须判未通过
+    template_node: verify
+    tools: [Read, Bash]
+    model: ""
+    thought_level: max
+    skills: []
+    mcp: []
+    memory_scope: private
+    parallel: 1
+    inputs:
+      merged: {type: string}
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}

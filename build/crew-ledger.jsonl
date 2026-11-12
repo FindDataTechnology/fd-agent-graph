@@ -1,0 +1,9 @@
+{"at": "2026-11-09T01:28:23+0800", "project": "fd-portmap", "routes": ["snapshot", "allowfile", "summary"], "dispatched": 5, "completed": 5, "takeover": 0, "reason": ""}
+{"at": "2026-11-09T01:28:23+0800", "project": "fd-backup-age", "routes": ["history"], "dispatched": 5, "completed": 4, "takeover": 1, "reason": "empty completion: reported completed with zero files"}
+{"at": "2026-11-09T01:28:23+0800", "project": "fd-win-health", "routes": ["config", "store", "cli"], "dispatched": 3, "completed": 3, "takeover": 1, "reason": "verifier killed by upstream 502"}
+{"at": "2026-11-09T01:28:23+0800", "project": "fd-disk-trend", "routes": ["horizon"], "dispatched": 5, "completed": 5, "takeover": 0, "reason": ""}
+{"at": "2026-11-09T01:37:45+0800", "project": "fd-portmap", "routes": ["bind", "change"], "dispatched": 4, "completed": 1, "takeover": 2, "reason": "whole run died on upstream empty completion; zero files written"}
+{"at": "2026-11-09T01:44:01+0800", "project": "fd-portmap", "routes": ["bind", "change"], "dispatched": 4, "completed": 0, "takeover": 4, "reason": "whole run died on upstream empty completion; agent authored both routes"}
+{"at": "2026-11-09T01:50:43+0800", "project": "fd-portmap", "routes": ["propose"], "dispatched": 1, "completed": 0, "takeover": 1, "reason": "provider degraded (2/3 probes, one 90s timeout): dispatched 1 route instead of 5; agent authored it"}
+{"at": "2026-11-09T08:41:11+0800", "project": "fd-win-health", "routes": ["ops"], "dispatched": 1, "completed": 1, "takeover": 0, "reason": ""}
+{"at": "2026-11-09T09:54:12+0800", "project": "fd-portmap", "routes": ["store", "wire"], "dispatched": 5, "completed": 5, "takeover": 1, "reason": "one implementer returned empty output but files were real; sentry verified on disk"}

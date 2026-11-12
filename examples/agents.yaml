@@ -1,0 +1,59 @@
+roster: finddata-coding
+version: 1
+template: examples/coding-template.yaml
+agents:
+  - id: planner
+    role: 把 change 的 tasks 切成互不重叠的片
+    template_node: planner
+    skills: [openspec-propose]
+    mcp: []
+    memory_scope: shared
+    authoritative_facts: [change-scope]
+    inputs:
+      change: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+
+  - id: implementer
+    role: 只改自己那片，带回文件归属与审查要点
+    template_node: worker
+    parallel: 6
+    skills: []
+    mcp:
+      - server: graphify
+      - server: openspec
+    memory_scope: private
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      patch: {type: string}
+      file_ownership: {type: array, items: {type: string}, constraint: true}
+      review_note: {type: array, items: {type: string}, constraint: true}
+
+  - id: merger
+    role: 承接各路口径与归属，显式解决冲突
+    template_node: merge
+    skills: [openspec-apply-change]
+    mcp: []
+    memory_scope: shared
+    authoritative_facts: [merge-decision]
+    inputs:
+      patch: {type: string}
+      scope: {type: object}
+      file_ownership: {type: array, items: {type: string}}
+      review_note: {type: array, items: {type: string}}
+    outputs:
+      merged: {type: string}
+
+  - id: verifier
+    role: 只看合入结果是否满足验证条件
+    template_node: verify
+    skills: []
+    mcp: []
+    memory_scope: private
+    inputs:
+      merged: {type: string}
+    outputs:
+      verdict: {type: boolean}

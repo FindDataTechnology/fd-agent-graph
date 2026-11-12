@@ -1,0 +1,284 @@
+edges:
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w01
+  - carries:
+      - patch
+      - file_ownership
+      - review_note
+    from: w01
+    to: merge
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w02
+  - carries:
+      - patch
+      - file_ownership
+      - review_note
+    from: w02
+    to: merge
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w03
+  - carries:
+      - patch
+      - file_ownership
+      - review_note
+    from: w03
+    to: merge
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w04
+  - carries:
+      - patch
+      - file_ownership
+      - review_note
+    from: w04
+    to: merge
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w05
+  - carries:
+      - patch
+      - file_ownership
+      - review_note
+    from: w05
+    to: merge
+  - carries:
+      - tasks
+      - scope
+    from: planner
+    to: w06
+  - carries:
+      - patch
+      - file_ownership
+      - review_note
+    from: w06
+    to: merge
+  - carries:
+      - merged
+    from: merge
+    to: verify
+entries:
+  - planner
+graph: v2-template-6-keeps
+inputs:
+  change:
+    type: string
+nodes:
+  - effects:
+      - read
+    id: planner
+    idempotent: true
+    inputs:
+      change:
+        type: string
+    kind: agent
+    outputs:
+      scope:
+        constraint: true
+        type: object
+      tasks:
+        items:
+          type: string
+        type: array
+  - effects:
+      - write
+      - network
+    id: w01
+    idempotent: true
+    inputs:
+      scope:
+        type: object
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        items:
+          type: string
+        type: array
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        items:
+          type: string
+        type: array
+  - effects:
+      - write
+      - network
+    id: w02
+    idempotent: true
+    inputs:
+      scope:
+        type: object
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        items:
+          type: string
+        type: array
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        items:
+          type: string
+        type: array
+  - effects:
+      - write
+      - network
+    id: w03
+    idempotent: true
+    inputs:
+      scope:
+        type: object
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        items:
+          type: string
+        type: array
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        items:
+          type: string
+        type: array
+  - effects:
+      - write
+      - network
+    id: w04
+    idempotent: true
+    inputs:
+      scope:
+        type: object
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        items:
+          type: string
+        type: array
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        items:
+          type: string
+        type: array
+  - effects:
+      - write
+      - network
+    id: w05
+    idempotent: true
+    inputs:
+      scope:
+        type: object
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        items:
+          type: string
+        type: array
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        items:
+          type: string
+        type: array
+  - effects:
+      - write
+      - network
+    id: w06
+    idempotent: true
+    inputs:
+      scope:
+        type: object
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        items:
+          type: string
+        type: array
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        items:
+          type: string
+        type: array
+  - cost: 2
+    effects:
+      - write
+    id: merge
+    idempotent: true
+    inputs:
+      file_ownership:
+        items:
+          type: string
+        type: array
+      patch:
+        type: string
+      review_note:
+        items:
+          type: string
+        type: array
+    kind: join
+    outputs:
+      merged:
+        type: string
+  - effects:
+      - read
+    id: verify
+    idempotent: true
+    inputs:
+      merged:
+        type: string
+    kind: verify
+    outputs:
+      verdict:
+        type: boolean
+terminals:
+  - verify
+version: 1

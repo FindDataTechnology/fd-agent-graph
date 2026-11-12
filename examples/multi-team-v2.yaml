@@ -1,0 +1,241 @@
+graph: multi-team-v2
+version: 1
+entries: [planner_a, planner_b]
+terminals: [verify_salvage]
+inputs:
+  batch: {type: string}
+
+# 相对 v1 的四条调整，全部来自 2026-11-08 那一轮三队并发的实测：
+#   1. 3 队 6 路 -> 2 队 4 路。6 路把上游压出排队，3 队里 1 队整队全损（33% 全损率）。
+#      峰值并发让位于成功交付：宁可 4 路跑完，不要 6 路死一个。
+#   2. verify 新增 `test_count` 输出（constraint）。B 队验收者交了空 test/ 却报 completed，
+#      而 `node --test` 在 0 个测试时 rc=0 —— 那是假绿。测试数必须 >0 才算验过。
+#   3. 新增 salvage 节点。上一轮整队死于上游空回包，图里没有任何位置承载"这队没了"，
+#      只能由人在图外兜底。现在 rollup 可以显式路由到 salvage。
+#   4. `repaired` 与 `notes` 是约束，避免"救回来了"这句话没有可核对的凭据。
+nodes:
+  - id: planner_a
+    kind: agent
+    effects: [read]
+    idempotent: true
+    cost: 2
+    inputs:
+      batch: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+      test_policy: {type: object, constraint: true}
+    description: 切 A 单元两片；并把"测试数必须 >0"写进 test_policy，不许留解释空间
+  - id: planner_b
+    kind: agent
+    effects: [read]
+    idempotent: true
+    cost: 2
+    inputs:
+      batch: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+      test_policy: {type: object, constraint: true}
+    description: 切 B 单元两片，同样带 test_policy
+
+  - id: impl_a1
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: A 单元核心模块
+  - id: impl_a2
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: A 单元 CLI 与判定
+  - id: impl_b1
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: B 单元核心模块
+  - id: impl_b2
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: B 单元 CLI 与 SLA 判定
+
+  - id: merge_a
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: A 单元扇入；缺标记就记 dropped，不阻塞
+  - id: merge_b
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: B 单元扇入
+
+  - id: verify_a
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      test_count: {type: number, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+  - id: verify_b
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+      test_count: {type: number, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+
+  - id: rollup
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      evidence: {type: object}
+      test_count: {type: number}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      batch_verdict: {type: boolean}
+      salvage_needed: {type: array, items: {type: string}, constraint: true}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+      test_policy: {type: object, constraint: true}
+    description: 汇总两队；test_count 为 0 或 dropped 非空 -> 把该单元写进 salvage_needed
+
+  - id: salvage
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Bash, Write, Edit]
+    inputs:
+      salvage_needed: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      repaired: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: 只救 rollup 点名的单元；救不动就明说，不许假装
+
+  - id: verify_salvage
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      repaired: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      salvage_needed: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      test_policy: {type: object}
+    outputs:
+      final_verdict: {type: boolean}
+      test_count: {type: number, constraint: true}
+    description: 救回来的代码同样要过测试数>0 这一关，否则"救回来了"只是句话
+
+edges:
+  - {from: planner_a, to: impl_a1, carries: [tasks, scope]}
+  - {from: planner_a, to: impl_a2, carries: [tasks, scope]}
+  - {from: planner_b, to: impl_b1, carries: [tasks, scope]}
+  - {from: planner_b, to: impl_b2, carries: [tasks, scope]}
+  - {from: impl_a1, to: merge_a, carries: [exports, files_written, notes]}
+  - {from: impl_a2, to: merge_a, carries: [exports, files_written, notes]}
+  - {from: impl_b1, to: merge_b, carries: [exports, files_written, notes]}
+  - {from: impl_b2, to: merge_b, carries: [exports, files_written, notes]}
+  - {from: planner_a, to: merge_a, carries: [scope, exit_contract, test_policy]}
+  - {from: planner_b, to: merge_b, carries: [scope, exit_contract, test_policy]}
+  - {from: merge_a, to: verify_a, carries: [export_list, dropped]}
+  - {from: merge_b, to: verify_b, carries: [export_list, dropped]}
+  - {from: planner_a, to: verify_a, carries: [scope, exit_contract, test_policy]}
+  - {from: planner_b, to: verify_b, carries: [scope, exit_contract, test_policy]}
+  - {from: verify_a, to: rollup, carries: [export_list, dropped, evidence, test_count]}
+  - {from: verify_b, to: rollup, carries: [export_list, dropped, evidence, test_count]}
+  - {from: planner_a, to: rollup, carries: [scope, exit_contract, test_policy]}
+  - {from: planner_b, to: rollup, carries: [scope, exit_contract, test_policy]}
+  - {from: rollup, to: salvage, carries: [salvage_needed, scope, exit_contract, test_policy]}
+  - {from: salvage, to: verify_salvage, carries: [repaired, notes]}
+  - {from: rollup, to: verify_salvage, carries: [scope, exit_contract, test_policy, salvage_needed]}

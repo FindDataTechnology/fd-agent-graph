@@ -1,0 +1,452 @@
+edges:
+  - carries:
+      - todo_out
+    from: t1_1
+    to: t1_2
+  - carries:
+      - todo_out
+    from: t1_2
+    to: t1_3
+  - carries:
+      - todo_out
+    from: t2_1
+    to: t2_2
+  - carries:
+      - todo_out
+    from: t2_2
+    to: t2_3
+  - carries:
+      - todo_out
+    from: t2_3
+    to: t2_4
+  - carries:
+      - todo_out
+    from: t3_1
+    to: t3_2
+  - carries:
+      - todo_out
+    from: t3_2
+    to: t3_3
+  - carries:
+      - todo_out
+    from: t3_3
+    to: t3_4
+  - carries:
+      - todo_out
+    from: t4_1
+    to: t13
+  - carries:
+      - todo_out
+    from: t13
+    to: t14
+  - carries:
+      - todo_out
+    from: t14
+    to: t4_4
+  - carries:
+      - todo_out
+    from: t4_4
+    to: t4_5
+  - carries:
+      - todo_out
+    from: t5_1
+    to: t5_2
+  - carries:
+      - todo_out
+    from: t6_1
+    to: t6_2
+  - carries:
+      - todo_out
+    from: t6_2
+    to: t6_3
+  - carries:
+      - todo_out
+    from: t7_1
+    to: t7_2
+  - carries:
+      - todo_out
+    from: t7_2
+    to: t7_3
+  - carries:
+      - todo_out
+    from: t8_1
+    to: t8_2
+  - carries:
+      - todo_out
+    from: t8_2
+    to: t8_3
+entries:
+  - t1_1
+  - t2_1
+  - t3_1
+  - t4_1
+  - t5_1
+  - t6_1
+  - t7_1
+  - t8_1
+graph: awaken-agriculture-report-ingest
+metadata:
+  generated_from: /Users/chengsishi/finddata/openspec/changes/awaken-agriculture-report-ingest/tasks.md
+  note: sections are independent branches; tasks inside a section are ordered. TODO placeholders must be resolved; the gate rejects them.
+nodes:
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.1 侦察簿硬性排除节补「农业财报局部重开」决策记录：范围=申万农林牧渔 A 股全量四类定期报告，走 cn-report 车道，日期 2026-11-08，与证券业全量放行、银行业局部重开三条并列互不覆盖 — 验证=三条记录并存且各自范围无歧义"
+    effects:
+      - todo
+    id: t1_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.2 港美股边界重述落档：仅事件面（披露日期/公告类型/报告期/头条数字），**不做 XBRL 结构化细分**；写明与 2026-10-07 SEC EDGAR 排除裁决的关系（范围重述非解除）与理由（不与既有 A 股数据重叠） — 验证=决策记录含「多方」「不做项」「理由」三"
+    effects:
+      - todo
+    id: t1_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.3 边界守卫：在 spec 与决策记录中都写明「扩大范围须另立 change」 — 验证=grep 可得明确语句"
+    effects:
+      - todo
+    id: t1_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.1 A 股白名单生成器落地：申万农林牧渔成分实时拉取 + `szse_stock.json` orgId 官方映射，输出代码/名称/orgId/segment 机器可读导出，带 `--check` 对账模式 — 验证=对账一致；与 `agriculture-universe."
+    effects:
+      - todo
+    id: t2_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.2 港股事件面名单生成（HKEX 披露易可达实体，农林牧渔主营口径，含农产品与肉类加工，农资类排除） — 验证=名单每条有披露易可检索的股票代码；排除项有理由"
+    effects:
+      - todo
+    id: t2_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.3 美股事件面名单生成（SEC EDGAR，同口径） — 验证=名单每条有 CIK；农资类（化肥/农药/农机/种子生产）明确排除并留痕"
+    effects:
+      - todo
+    id: t2_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.4 A 股实体注册为 cn-report 实体（`entity_source_identifier`, source='cn-report'） — 验证=白名单实体全部 mapped、unmapped=0；复用既有 stock 实体不重建"
+    effects:
+      - todo
+    id: t2_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.1 试点选型：生猪养殖 / 禽养殖 / 饲料 / 种业 / 种植 各一家，覆盖 orgId 不同前缀形态 — 验证=选型表落档并说明每家代表的披露形态差异（非按市值选）"
+    effects:
+      - todo
+    id: t3_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.2 试点全链首跑：巨潮 category 检索（返回条数校验防类目失效）→ `static.cninfo` PDF 下载 → 入库 → 切章 → 规则抽取 → `report_documents`/`report_sections` 落库（parse_status 流转完整）"
+    effects:
+      - todo
+    id: t3_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.3 试点逐值核对：通用财务面（营收/净利/毛利率/总资产/经营现金流）逐值 vs 报告原文 — 验证=核对记录落 `reports/`，逐值一致；不一致项写明原因（口径差异/原文歧义）"
+    effects:
+      - todo
+    id: t3_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.4 试点细分披露率实测：养殖产能与成本、饲料分品种、种业、种植面积等各细分指标在 5 家的披露率 — 验证=披露率表落档；披露率过低（<30%）的指标标为可选指标并同步 A 单板面"
+    effects:
+      - todo
+    id: t3_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.1 表格式规则（`script_rules`，position 定位）：分产品/分地区收入与毛利、生物资产明细（消耗性/生产性）、政府补助明细 — 验证=试点抽取命中且与原文表格数值一致"
+    effects:
+      - todo
+    id: t4_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 叙述式规则（`llm_rules`）：生猪出栏量/销售量/商品猪均价、养殖完全成本、能繁母猪存栏、饲料销量、制种面积、土地流转与自营种植面积、动保批签发 — 验证=aliases + position 指向「经营情况讨论与分析」章节；试点命中"
+    effects:
+      - todo
+    id: t13
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 三个财务质量指标专属规则：①生物资产结构（生产性/消耗性占比与减值）②政府补助占利润总额比例 ③存货与跌价准备计提 — 验证=三项均可从试点报告抽出，且不依赖通用科目反推"
+    effects:
+      - todo
+    id: t14
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.4 golden 锚：每项指标 ≥1 个已知期已知值（锚自 W2 核对记录）；对位失败不出数、未披露输出三态之一 — 验证=锚记录可复算；任一指标对位失败时留痕不出数"
+    effects:
+      - todo
+    id: t4_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.5 口径冲突处理：不同会计政策下同名指标口径不一（如完全成本是否含期间费用）→ 规则 `note` 记口径，映射时不合并 — 验证=至少一处口径差异被如实记录"
+    effects:
+      - todo
+    id: t4_5
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.1 四波回补（生猪养殖→禽与饲料→种业与种植→动保/渔业/林业/加工）近三年四类报告 — 验证=覆盖可得份数（目标≈家数×4 类×3 年）；缺刊如实留痕，不制造缺口"
+    effects:
+      - todo
+    id: t5_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.2 杂项公告拦截：category 过滤失效时可能混入非定期报告 — 验证=抽样检查入库文档全为定期报告，无杂项公告"
+    effects:
+      - todo
+    id: t5_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.1 `taxonomy_mapping` 启用并首建农业映射（中文科目/经营指标 → 概念），复用既有映射器 — 验证=映射行落库；首批只含农业细分指标组（小集合）"
+    effects:
+      - todo
+    id: t6_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.2 `semantic_observations` 注册（键含 `source_used='cn-report'`，季度/年度口径分别登记；港股口径行带 `caliber` 标注） — 验证=幂等（重跑零重复）+ 命名门通过（unverified=0）+ 未过门指标读面不可见"
+    effects:
+      - todo
+    id: t6_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.3 水位线接管：`plan_crawl --since-last` 对农业概念产出仅含新报告期 — 验证=dry-run plan 留档，与存量对账"
+    effects:
+      - todo
+    id: t6_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.1 港股车道：HKEX 披露易标题检索（披露日期/公告类型/报告期/盈警类型/头条营收净利） — 验证=抽取 ≥3 家最近一期披露事件，头条数字与公告原文一致"
+    effects:
+      - todo
+    id: t7_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.2 美股车道：SEC EDGAR 事件面（8-K/10-K/20-F 标题 + 财报日历 + 头条营收净利），**不取 company facts XBRL 细分** — 验证=抽取 ≥3 家最近一期事件；代码中无 XBRL facts 调用（可 grep 证明）"
+    effects:
+      - todo
+    id: t7_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.3 事件流形状对齐 A 单看板消费契约（事件流 + 头条 KPI） — 验证=输出形状与 `agriculture-boards` 公司财务板要求一致"
+    effects:
+      - todo
+    id: t7_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 8.1 覆盖声明产出：A 股家数/报告类型/报告期覆盖面 + 港股与美股事件面家数 + 排除项说明（农资类/H股双版本/可选项指标）落 `reports/` — 验证=声明与各 spec「如实声明」条逐条对应"
+    effects:
+      - todo
+    id: t8_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 8.2 daas.db 核对命令输出（report_documents / report_sections / taxonomy_mapping / semantic_observations 计数）留档 — 验证=命令输出落档"
+    effects:
+      - todo
+    id: t8_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 8.3 `openspec validate awaken-agriculture-report-ingest --strict` 全绿 — 验证=命令输出留档"
+    effects:
+      - todo
+    id: t8_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+terminals:
+  - t1_3
+  - t2_4
+  - t3_4
+  - t4_5
+  - t5_2
+  - t6_3
+  - t7_3
+  - t8_3
+version: 1

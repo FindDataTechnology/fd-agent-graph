@@ -1,0 +1,573 @@
+edges:
+  - carries:
+      - todo_out
+    from: t1_1
+    to: t1_2
+  - carries:
+      - todo_out
+    from: t1_2
+    to: t1_3
+  - carries:
+      - todo_out
+    from: t2_1
+    to: t2_2
+  - carries:
+      - todo_out
+    from: t2_2
+    to: t2_3
+  - carries:
+      - todo_out
+    from: t2_3
+    to: t2_4
+  - carries:
+      - todo_out
+    from: t2_4
+    to: t2_5
+  - carries:
+      - todo_out
+    from: t3_1
+    to: t3_2
+  - carries:
+      - todo_out
+    from: t3_2
+    to: t3_3
+  - carries:
+      - todo_out
+    from: t3_3
+    to: t3_4
+  - carries:
+      - todo_out
+    from: t3_4
+    to: t3_5
+  - carries:
+      - todo_out
+    from: t3_5
+    to: t3_6
+  - carries:
+      - todo_out
+    from: t4_1
+    to: t4_2
+  - carries:
+      - todo_out
+    from: t4_2
+    to: t4_3
+  - carries:
+      - todo_out
+    from: t4_3
+    to: t4_4
+  - carries:
+      - todo_out
+    from: t5_1
+    to: t5_2
+  - carries:
+      - todo_out
+    from: t5_2
+    to: t5_3
+  - carries:
+      - todo_out
+    from: t5_3
+    to: t5_4
+  - carries:
+      - todo_out
+    from: t5_4
+    to: t5_5
+  - carries:
+      - todo_out
+    from: t5_5
+    to: t5_6
+  - carries:
+      - todo_out
+    from: t6_1
+    to: t6_2
+  - carries:
+      - todo_out
+    from: t6_2
+    to: t6_3
+  - carries:
+      - todo_out
+    from: t6_3
+    to: t6_4
+  - carries:
+      - todo_out
+    from: t6_4
+    to: t6_5
+  - carries:
+      - todo_out
+    from: t6_5
+    to: t6_6
+  - carries:
+      - todo_out
+    from: t7_1
+    to: t7_2
+  - carries:
+      - todo_out
+    from: t7_2
+    to: t7_3
+  - carries:
+      - todo_out
+    from: t7_3
+    to: t7_4
+entries:
+  - t1_1
+  - t2_1
+  - t3_1
+  - t4_1
+  - t5_1
+  - t6_1
+  - t7_1
+graph: add-hotel-vertical
+metadata:
+  generated_from: /Users/chengsishi/finddata/openspec/changes/add-hotel-vertical/tasks.md
+  note: sections are independent branches; tasks inside a section are ordered. TODO placeholders must be resolved; the gate rejects them.
+nodes:
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.1 序列精选清单定稿（既有源可得部分与新源待接部分分开标注），落档 `fd-industry-data/docs/hotel-series-curation.md` — 验证：清单含每条的 `source_used`、源侧序列 ID、粒"
+    effects:
+      - todo
+    id: t1_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.2 概念注册：行业景气/旅游需求/住宿业价格概念过命名质量门（semantic_code / 中英文名 / 单位 / 频次 / 域）；住宿业 CPI 与出游人次注册为同域对照对 — 验证：concepts 与 registry_entr"
+    effects:
+      - todo
+    id: t1_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 1.3 既有源序列回填：`eurostat-api` 旅游住宿夜数（`tour_occ_*`）、`nbs-stats` 住宿业口径、`jp-estat` 宿泊旅行统计、`census-eits` / `bls` 住宿业对照序列 — 验证：抽"
+    effects:
+      - todo
+    id: t1_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.1 侦察簿登记实测：文旅部星级饭店季报口、文旅部出游数据口、中国饭店协会报告口，各含直连/代理、鉴权、周期、历史深度、附件形态 — 验证：`data-source-scouting/INDUSTRY-DATA-SOURCES.md` 新"
+    effects:
+      - todo
+    id: t2_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.2 迈点 MBI 去留裁决：代理与直连各测一轮，留痕结论（实测已记录 502 / 12s 超时） — 验证：侦察簿写明「接入」或「放弃·显式不可得」之一，不含「待定」"
+    effects:
+      - todo
+    id: t2_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.3 生成单 + golden 样本：三源以 `kind=generate` 工单进入 fd-industry-data，golden 入库，过 conformance gate 与双 lint — 验证：`python3 fd-indu"
+    effects:
+      - todo
+    id: t2_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.4 星级饭店三张 xlsx 的列名映射表（按标题匹配不按列序）与三维度口径（region / city / star）落档 — 验证：映射表覆盖三张表全部列；映射不中时单元硬失败，留 golden 负例"
+    effects:
+      - todo
+    id: t2_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 2.5 三源试跑验证后补 `schedule` 点亮，观测目录注册对应概念 — 验证：首批观测入库、口径守卫基线建立、侦察簿状态更新为已接入；分省与按星级两维度同时入库且互不覆盖"
+    effects:
+      - todo
+    id: t2_5
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.1 宇宙注册表落地：`fd-industry-data/universes/` 三个 region 文件（HK / US / CN-A），schema 含 `ticker / name / segment / verticals[]`；"
+    effects:
+      - todo
+    id: t3_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.2 `hkex-disclosure` 与 `sec-edgar-facts` 默认宇宙切注册表读取，`label` 中性化 — 验证：`name` / `functions[].command` / 参数名 / 列名四项不变量逐项断言"
+    effects:
+      - todo
+    id: t3_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.3 零回归验收：以改造前餐饮参数重放两单元，与改造前快照逐字段比对 — 验证：行数、字段值、排序、失败语义差异为零或逐条留裁决理由；证据落 change 目录"
+    effects:
+      - todo
+    id: t3_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.4 `eastmoney-disclosure-plan` 参数化：42 家银行硬编码改为注册表/参数驱动 — 验证：银行参数重放零回归；酒店参数可产出 A 股酒店披露日历"
+    effects:
+      - todo
+    id: t3_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.5 `cninfo-operating` 加「经营数据简报」类目（**实证修订**：A 股酒店唯一可命中的是锦江 2023「部分经营数据简报」；「主要运营数据/季度经营数据」实测全为「非经营性资金占用」假阳性）— 验证：既有 5 类关键"
+    effects:
+      - todo
+    id: t3_5
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 3.6 酒店 33 家宇宙注册（region / segment / ticker / 车道映射），欧股 2 家映射标注「无车道·一期不可得」 — 验证：分 region 计数 6/5/10/4/2/4/2 与 segment 分布过断言；"
+    effects:
+      - todo
+    id: t3_6
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.1 A 股通道（**范围已按实证收窄**）：锦江 2023 历史简报回补 + 其余 5 家与 2024 年后显式不可得 — 验证：锦江 2023-09-27 与 2023-12-22 两份简报的 RevPAR/平均房价/平均出租率与原文"
+    effects:
+      - todo
+    id: t4_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.2 港股通道：`hkex-disclosure` 经营数据公告类目过滤 + 字段口径表 — **验收口径按实测修订**：原文写「至少 2 家可稳定取到数值」，实测只有 1 家有此载体，改为「可解析家数按载体实证 + 其余家逐家状态呈现」"
+    effects:
+      - todo
+    id: t4_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.3 美股 8-K exhibit 99.1 抽取新单元（filing index → 99.1 → 表格），逐家 mapping 表，携带边界注记 — **验收口径按实测修订**：原文写「至少 4 家（MAR/HLT/WH/HTHT）」"
+    effects:
+      - todo
+    id: t4_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 4.4 细分口径逐家登记表（market / metric / 口径语义 / 是否固定汇率 / 含不含筹建），落档 `fd-industry-data/docs/hotel-kpi-caliber.md` — 验证：33 家中每家的每个可用"
+    effects:
+      - todo
+    id: t4_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.1 行业景气板（星级饭店 OCC/ADR/营收，分省/按星级/50 城市）+ 覆盖面 caveat — 验证：`dashboards/` 新板构建通过；as-of 机器可读；星级口径不可外推的声明逐字在版"
+    effects:
+      - todo
+    id: t5_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.2 供需板（出游人次/花费、民航客运、出入境 vs 星级饭店数/客房数） — 验证：两侧各自标注来源与延迟；任一侧缺测时缺口显式标注"
+    effects:
+      - todo
+    id: t5_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.3 公司财务板（33 家事件流 + RevPAR/系统规模 KPI，逐家口径标注，不可得显式） — 验证：33 家均有事件条目或显式不可得标注，无空值伪装；欧股 2 家呈现为不可得"
+    effects:
+      - todo
+    id: t5_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.4 公开展示板投影走 `dashboard-publication` 门禁 — 验证：构建门全绿（业务语文 / 无内部标识 / caveat 逐字保留 / as-of 与数据一致）"
+    effects:
+      - todo
+    id: t5_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.5 酒店工具面上牌：只读门 + 双语注释 + surface 清单对齐 + 四类不可得声明 — 验证：selfcheck 过；`?locale=en` 逐工具验双语；risk 类别全 read"
+    effects:
+      - todo
+    id: t5_5
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 5.6 酒店监测舰蓝图构造铸造（`fleet-packs/hotel/`），born-paused → start，首轮真跑 — 验证：首轮 run 真读工具产出值守记录；蓝图过构造闸"
+    effects:
+      - todo
+    id: t5_6
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.1 健康级：三新源 + 精选序列单元 + 泛化后的共享车道全部纳入巡检面 — 验证：出现在 inspector 扫描清单；模拟断流产生工单"
+    effects:
+      - todo
+    id: t6_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.2 阈值级：首批五条规则（出租率同比转负 / ADR 环比跌幅 / 出游人次连续两期下滑 / 供需缺口 / RevPAR 连续下滑）落配置 + 评估 + 证据 — 验证：历史窗口回放至少触发一次且证据完整（触发值/阈值/窗口/来源）"
+    effects:
+      - todo
+    id: t6_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.3 事件级：披露日历 + 盈警 + 摘星降星/行政处罚 + 重大安全事件，幂等上报 — 验证：同一盈警重复扫描仅首次上报；摘星事件可回指公告 URL"
+    effects:
+      - todo
+    id: t6_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.4 发布节奏级：每源节奏画像学出（`expected_cadence` / `lag_p50` / `lag_p95` / `last_publish_date`）并落档 — 验证：星级饭店季报用 2019 起历史反推的滞后分布合理（实"
+    effects:
+      - todo
+    id: t6_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.5 节奏判定上线：「逾期未发」产预警并与「抓取失败」严格分流，画像随新期次更新 — 验证：构造一次逾期场景触发节奏预警且不产工单；构造一次抽取失败触发工单且不产节奏预警"
+    effects:
+      - todo
+    id: t6_5
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 6.6 escalate 路径贯通 + 值守档案落档（provenance / 缺测四类归因） — 验证：端到端演练：源逾期 → 节奏预警 → escalate → 档案可审计；缺测归因落在四类之一"
+    effects:
+      - todo
+    id: t6_6
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.1 全仓 conformance gate + `openspec validate add-hotel-vertical --strict` — 验证：双门全绿"
+    effects:
+      - todo
+    id: t7_1
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.2 四能力 spec 场景逐条核验（结构化优先 / 不补零 / 维度不覆盖 / 零回归 / 不可得显式 / 幂等 / 节奏分流 / 四类归因） — 验证：每条 Scenario 有对应实证或测证记录"
+    effects:
+      - todo
+    id: t7_2
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.3 端到端演示链：新季报发布 → 观测入库 → 板面更新 → 舰值守 → 阈值/事件预警，全程留档 — 验证：一条真实季报的全链演示记录"
+    effects:
+      - todo
+    id: t7_3
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+  - cost: 1
+    description: "TODO(effects, idempotent, constraints): 7.4 挂账清点与侦察簿 / 宇宙清单 / 口径表对齐收尾 — 验证：挂账逐条记录处置或显式转入后续 change（欧股车道 / 台股上游 / 酒店 ERP 模板）"
+    effects:
+      - todo
+    id: t7_4
+    inputs:
+      todo_in:
+        required: false
+        type: any
+    kind: agent
+    outputs:
+      todo_out:
+        type: any
+terminals:
+  - t1_3
+  - t2_5
+  - t3_6
+  - t4_4
+  - t5_6
+  - t6_6
+  - t7_4
+version: 1

@@ -1,0 +1,96 @@
+graph: win-health-v2
+version: 1
+entries: [planner]
+terminals: [verify]
+inputs:
+  change: {type: string}
+
+# 相对 v1 的三处调整，每条都对着一次实测：
+#   1. 三路而不是两路 —— 上一轮 branch B 扛了 cli.js(338 行)，是其余文件的 2.6 倍，
+#      它比 branch A 晚 8 分钟收口，合并点就等了 8 分钟。把最长的那个文件单独切一路。
+#   2. 新增 `branch_status` 端口（constraint）—— 上一轮三路文件都写完了，角色却 17 分钟
+#      不退出，"写完了"与"完成了"没有区分，合并点干等。现在每路必须落一个完成标记。
+#   3. 合并点的 `merged` 允许带 `dropped` —— 缺一路标记就记账继续，无限等比可见丢弃更糟。
+nodes:
+  - id: planner
+    kind: agent
+    effects: [read]
+    idempotent: true
+    inputs:
+      change: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+      branch_plan: {type: object, constraint: true}
+    description: 切三片互不相交的文件集；同时定下完成标记的路径与字段，这是本轮的验收口径
+
+  - id: implement
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Read, Grep, Glob, Bash, Write, Edit]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+      branch_plan: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      branch_status: {type: object, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: 只写自己那片；落完成标记文件后才算完成——标记是合并点唯一的开工信号
+
+  - id: merge
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Read, Write]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      branch_status: {type: object}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      branch_plan: {type: object}
+    outputs:
+      merged: {type: string, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+      dropped: {type: array, items: {type: string}, constraint: true}
+    description: 写入口把所有路的导出转出；缺哪路就写进 dropped 并继续，不允许阻塞等待
+
+  - id: verify
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      merged: {type: string}
+      export_list: {type: array, items: {type: string}}
+      dropped: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+      branch_plan: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+    description: 跑真命令报真退出码；dropped 非空时必须判未通过，不许沉默
+
+edges:
+  - from: planner
+    to: implement
+    carries: [tasks, scope, branch_plan]
+  - from: implement
+    to: merge
+    carries: [exports, files_written, branch_status, notes]
+  - from: planner
+    to: merge
+    carries: [scope, exit_contract, branch_plan]
+  - from: merge
+    to: verify
+    carries: [merged, export_list, dropped]
+  - from: planner
+    to: verify
+    carries: [scope, exit_contract, branch_plan]

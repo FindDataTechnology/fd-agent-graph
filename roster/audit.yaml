@@ -1,0 +1,68 @@
+# 只读审计班底：与 coding template 用同一份形状，只换编制。
+# 四路只读侦察 + 一个承接全部约束的合并点 + 一个验收点。
+roster: finddata-audit
+version: 1
+template: ../build/audit.yaml
+
+agents:
+  - id: planner
+    role: 把审计范围切成四片，并给出判定标准（标准是约束）
+    template_node: planner
+    tools: [Read, Grep, Glob, Bash]
+    thought_level: high
+    skills: []
+    mcp: []
+    memory_scope: shared
+    authoritative_facts: [audit-criteria]
+    inputs:
+      scope: {type: string}
+    outputs:
+      slices: {type: array, items: {type: string}}
+      criteria: {type: array, items: {type: string}, constraint: true}
+
+  - id: auditor
+    role: 只读审计自己那一片，带回改了哪些文件、需要下游注意什么（两者都是约束）
+    template_node: auditor
+    parallel: 4
+    tools: [Read, Grep, Glob, Bash]
+    thought_level: medium
+    skills: []
+    mcp: []
+    memory_scope: private
+    inputs:
+      slices: {type: array, items: {type: string}}
+      criteria: {type: array, items: {type: string}}
+    outputs:
+      findings: {type: array, items: {type: string}}
+      file_ownership: {type: array, items: {type: string}, constraint: true}
+      review_note: {type: array, items: {type: string}, constraint: true}
+
+  - id: merger
+    role: 承接四路的判定标准、文件归属与审查要点，去重并给出唯一结论
+    template_node: merge
+    tools: [Read, Grep, Bash]
+    thought_level: max
+    skills: []
+    mcp: []
+    memory_scope: shared
+    authoritative_facts: [audit-verdict]
+    inputs:
+      findings: {type: array, items: {type: string}}
+      criteria: {type: array, items: {type: string}}
+      file_ownership: {type: array, items: {type: string}}
+      review_note: {type: array, items: {type: string}}
+    outputs:
+      merged: {type: array, items: {type: string}}
+
+  - id: verifier
+    role: 只看合并结论是否满足判定标准，不改任何东西
+    template_node: verify
+    tools: [Read, Grep, Bash]
+    thought_level: max
+    skills: []
+    mcp: []
+    memory_scope: private
+    inputs:
+      merged: {type: array, items: {type: string}}
+    outputs:
+      verdict: {type: boolean}

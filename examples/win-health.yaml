@@ -1,0 +1,81 @@
+graph: win-health-watchdog
+version: 1
+entries: [planner]
+terminals: [verify]
+inputs:
+  change: {type: string}
+nodes:
+  - id: planner
+    kind: agent
+    effects: [read]
+    idempotent: true
+    inputs:
+      change: {type: string}
+    outputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object, constraint: true}
+      exit_contract: {type: object, constraint: true}
+    description: 读 tasks.md 与 SPEC，把工作切成两片互不相交的文件集（探针层 / 判定层）
+
+  - id: implement
+    kind: agent
+    effects: [write]
+    idempotent: true
+    tools: [Write, Read, Bash]
+    inputs:
+      tasks: {type: array, items: {type: string}}
+      scope: {type: object}
+    outputs:
+      exports: {type: array, items: {type: string}, constraint: true}
+      files_written: {type: array, items: {type: string}, constraint: true}
+      notes: {type: array, items: {type: string}, constraint: true}
+    description: 只写自己那片文件；必须回报导出的函数名——这是合并点唯一可信的依据
+
+  - id: merge
+    kind: join
+    effects: [write]
+    idempotent: true
+    cost: 2
+    tools: [Write, Read]
+    inputs:
+      exports: {type: array, items: {type: string}}
+      files_written: {type: array, items: {type: string}}
+      notes: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      merged: {type: string, constraint: true}
+      export_list: {type: array, items: {type: string}, constraint: true}
+    description: 写 src/index.js，把两路汇报的导出全部转出；漏一个即违约
+
+  - id: verify
+    kind: verify
+    effects: [read]
+    idempotent: true
+    tools: [Read, Bash]
+    inputs:
+      merged: {type: string}
+      export_list: {type: array, items: {type: string}}
+      scope: {type: object}
+      exit_contract: {type: object}
+    outputs:
+      verdict: {type: boolean}
+      evidence: {type: object, constraint: true}
+    description: 跑 node --test 与 --help/--json 三条真命令，报真实退出码，不许粉饰
+
+edges:
+  - from: planner
+    to: implement
+    carries: [tasks, scope]
+  - from: implement
+    to: merge
+    carries: [exports, files_written, notes]
+  - from: planner
+    to: merge
+    carries: [scope, exit_contract]
+  - from: merge
+    to: verify
+    carries: [merged, export_list]
+  - from: planner
+    to: verify
+    carries: [scope, exit_contract]
