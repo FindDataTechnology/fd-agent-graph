@@ -74,7 +74,7 @@ class ParseTest(unittest.TestCase):
         self.assertTrue(review.is_decision)
         self.assertEqual(review.route_names(), ("approved", "revise"))
         self.assertEqual(review.select, "one")
-        self.assertEqual(review.route_condition("approved"), "the draft meets the bar")
+        self.assertEqual(dict(review.routes)["approved"], "the draft meets the bar")
 
     def test_node_guard_is_loaded(self):
         graph = graph_from_dict(definition())
@@ -109,7 +109,7 @@ class ParseTest(unittest.TestCase):
         )
         review = graph.node("review")
         self.assertEqual(review.route_names(), ("approved", "revise"))
-        self.assertEqual(review.route_condition("revise"), "")
+        self.assertEqual(dict(review.routes)["revise"], "")
 
 
 class MalformedGuardTest(unittest.TestCase):

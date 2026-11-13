@@ -23,7 +23,6 @@ from fd_agent_graph.guards import (
     evaluate,
     parse_guard,
     referenced_nodes,
-    referenced_routes,
 )
 
 
@@ -108,9 +107,10 @@ class GrammarTest(unittest.TestCase):
         self.assertEqual(nodes, ["b", "a", "a"])
         self.assertEqual(referenced_nodes(guard), ("b", "a"))
 
-    def test_done_is_reported_as_the_literal_done(self):
+    def test_done_atom_is_distinguishable_from_a_named_route(self):
         guard = parse_guard("a.done and a.x")
-        self.assertEqual(referenced_routes(guard, "a"), ("done", "x"))
+        atoms = [(atom.node, atom.route) for atom in guard.atoms()]
+        self.assertEqual(atoms, [("a", None), ("a", "x")])
 
     def test_bare_done_route_is_the_done_atom(self):
         guard = parse_guard("a.done")

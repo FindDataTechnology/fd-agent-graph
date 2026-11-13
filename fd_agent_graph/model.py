@@ -181,13 +181,6 @@ class Node:
     def route_names(self) -> tuple[str, ...]:
         return tuple(name for name, _ in self.routes)
 
-    def route_condition(self, name: str) -> str | None:
-        for route, condition in self.routes:
-            if route == name:
-                return condition
-        return None
-
-
 @dataclass(frozen=True, slots=True)
 class Edge:
     source: str

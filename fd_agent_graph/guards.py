@@ -350,15 +350,3 @@ def referenced_nodes(guard: Guard) -> tuple[str, ...]:
         if atom.node not in seen:
             seen.append(atom.node)
     return tuple(seen)
-
-
-def referenced_routes(guard: Guard, node: str) -> tuple[str, ...]:
-    """Routes the guard names on `node`; `done` is reported as the literal 'done'."""
-    out: list[str] = []
-    for atom in guard.atoms():
-        if atom.node != node:
-            continue
-        route = "done" if atom.route is None else atom.route
-        if route not in out:
-            out.append(route)
-    return tuple(out)
