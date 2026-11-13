@@ -289,6 +289,13 @@ def run(
     error rather than a silent not-executed: the author has to say which route
     reaches it, and the checker is not able to answer that statically.
 
+    What an edge guard does **not** do is stop a value from being written: state is
+    one shared set of channels, so a node's outputs land there whether or not the
+    edge leaving it is taken. Edge guards change reachability, not visibility. This
+    is stated because the opposite is the natural reading of "the edge was not
+    taken", and a limitation that is not written down is the bug this module is
+    about. `tests/test_runner.py` pins it.
+
     Cycle rule and retry rule are the executor's, unchanged: a node runs at most
     once unless ``node.bound`` is set, and a bounded node re-runs only when a
     predecessor ran after its own last run.

@@ -419,6 +419,97 @@ class MayNotExecuteTest(unittest.TestCase):
             self.skipTest("example missing")
         self.assertEqual(may_not_execute(load_graph(path)), ())
 
+    def test_downstream_of_a_guarded_node_is_also_a_candidate(self):
+        # A node with no guard of its own still settles upstream_not_executed when
+        # every predecessor may not run. Reporting only the guarded node would
+        # answer "which branches can be skipped" with the first hop only.
+        from fd_agent_graph.loader import graph_from_dict
+
+        graph = graph_from_dict(
+            {
+                "graph": "chain",
+                "entries": ["d"],
+                "terminals": ["c"],
+                "nodes": [
+                    {
+                        "id": "d",
+                        "kind": "agent",
+                        "inputs": {},
+                        "outputs": {"route": {"type": "string"}},
+                        "effects": ["read"],
+                        "idempotent": True,
+                        "routes": {"yes": "ok", "no": "nope"},
+                        "select": "one",
+                    },
+                    {
+                        "id": "a",
+                        "kind": "agent",
+                        "inputs": {},
+                        "outputs": {},
+                        "effects": ["read"],
+                        "idempotent": True,
+                        "when": "d.yes",
+                    },
+                    {"id": "b", "kind": "agent", "inputs": {}, "outputs": {}, "effects": ["read"], "idempotent": True},
+                    {"id": "c", "kind": "agent", "inputs": {}, "outputs": {}, "effects": ["read"], "idempotent": True},
+                ],
+                "edges": [
+                    {"from": "d", "to": "a"},
+                    {"from": "a", "to": "b"},
+                    {"from": "b", "to": "c"},
+                ],
+            }
+        )
+        candidates = {item["node"]: item for item in may_not_execute(graph)}
+        self.assertEqual(set(candidates), {"a", "b", "c"})
+        self.assertEqual(candidates["a"]["guard"], "d.yes")
+        self.assertEqual(candidates["b"]["via"], "upstream_not_executed")
+        self.assertEqual(candidates["c"]["via"], "upstream_not_executed")
+        # Every candidate names the decision that makes its non-execution possible.
+        for item in candidates.values():
+            self.assertEqual(item["decided_by"], ["d"])
+
+    def test_a_merge_with_one_live_branch_is_not_a_candidate(self):
+        from fd_agent_graph.loader import graph_from_dict
+
+        graph = graph_from_dict(
+            {
+                "graph": "merge",
+                "entries": ["d"],
+                "terminals": ["m"],
+                "nodes": [
+                    {
+                        "id": "d",
+                        "kind": "agent",
+                        "inputs": {},
+                        "outputs": {"route": {"type": "string"}},
+                        "effects": ["read"],
+                        "idempotent": True,
+                        "routes": {"yes": "ok", "no": "nope"},
+                        "select": "one",
+                    },
+                    {
+                        "id": "a",
+                        "kind": "agent",
+                        "inputs": {},
+                        "outputs": {},
+                        "effects": ["read"],
+                        "idempotent": True,
+                        "when": "d.yes",
+                    },
+                    {"id": "q", "kind": "agent", "inputs": {}, "outputs": {}, "effects": ["read"], "idempotent": True},
+                    {"id": "m", "kind": "agent", "inputs": {}, "outputs": {}, "effects": ["read"], "idempotent": True},
+                ],
+                "edges": [
+                    {"from": "d", "to": "a"},
+                    {"from": "d", "to": "q"},
+                    {"from": "a", "to": "m"},
+                    {"from": "q", "to": "m"},
+                ],
+            }
+        )
+        self.assertNotIn("m", {item["node"] for item in may_not_execute(graph)})
+
     def test_the_gate_reports_but_does_not_refuse_candidates(self):
         with TemporaryDirectory() as tmp:
             from fd_agent_graph.loader import load_graph

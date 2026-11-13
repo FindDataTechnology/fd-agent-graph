@@ -44,18 +44,45 @@ def may_not_execute(graph: Graph) -> tuple[dict[str, object], ...]:
     Reported, never refused: a graph whose branches may not all run is the normal
     shape of an approval flow. What must not happen is a dispatch that does not
     say so.
+
+    Membership is a fixpoint, not a scan for `when`: a node with no guard of its
+    own still settles `upstream_not_executed` when every predecessor may not run.
+    Reporting only the guarded nodes would answer "which branches can be skipped"
+    with the first hop and call it complete - and the hop it omits is exactly the
+    one that surprises an owner reading the record afterwards.
     """
-    out: list[dict[str, object]] = []
+    by_id = {node.id: node for node in graph.nodes}
+    reasons: dict[str, set[str]] = {}
+
     for node in sorted(graph.nodes, key=lambda n: n.id):
-        if node.when is None:
-            continue
-        out.append(
-            {
-                "node": node.id,
-                "decided_by": list(referenced_nodes(node.when)),
-                "guard": node.when.to_source(),
-            }
-        )
+        if node.when is not None:
+            reasons.setdefault(node.id, set()).update(referenced_nodes(node.when))
+
+    changed = True
+    while changed:
+        changed = False
+        for node in sorted(graph.nodes, key=lambda n: n.id):
+            if node.id in reasons:
+                continue
+            preds = graph.incoming_sources(node.id)
+            if not preds or any(p not in reasons for p in preds):
+                continue
+            # Every predecessor may not run, so this node may settle upstream.
+            reasons[node.id] = set().union(*(reasons[p] for p in preds))
+            changed = True
+
+    out: list[dict[str, object]] = []
+    for node_id in sorted(reasons):
+        node = by_id[node_id]
+        entry: dict[str, object] = {
+            "node": node_id,
+            "decided_by": sorted(reasons[node_id]),
+        }
+        if node.when is not None:
+            entry["guard"] = node.when.to_source()
+        else:
+            entry["via"] = "upstream_not_executed"
+        out.append(entry)
     return tuple(out)
 
 

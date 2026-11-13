@@ -226,6 +226,37 @@ class NonExecutionTest(unittest.TestCase):
         self.assertEqual(trace.failed(), ())
         self.assertEqual(tuple(o.node for o in trace.not_executed()), ("a",))
 
+    def test_an_untaken_edge_still_writes_into_shared_state(self):
+        # Documented limitation, pinned: state is one set of channels, so a node's
+        # outputs are visible to later nodes even when the edge leaving it was not
+        # taken. Edge guards gate reachability, not visibility. If this ever
+        # changes, the paragraph in runner.run's docstring must change with it.
+        received: dict = {}
+
+        def consumer(inputs):
+            received.update(inputs)
+            return {}
+
+        g = graph(
+            [
+                decision("d"),
+                node("a", outputs=(Port("x", ANY),)),
+                node(
+                    "c",
+                    inputs=(Port("x", ANY, required=False),),
+                    when="d.approved",
+                ),
+            ],
+            [edge("d", "a"), edge("a", "c", carries=("x",), when="d.revise")],
+        )
+        trace = runner.run(
+            g,
+            {"d": route_impl("approved"), "a": lambda _i: {"x": "leaked"}, "c": consumer},
+            resolver=ChoiceResolver("approved"),
+        )
+        self.assertIn("c", trace.completed())
+        self.assertEqual(received.get("x"), "leaked")
+
     def test_an_optional_input_from_a_dead_branch_is_accepted(self):
         # A merge with one dead branch and one live one: it still runs, and the
         # dead branch's port is simply absent. This is the case the optional
