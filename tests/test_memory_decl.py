@@ -208,6 +208,39 @@ class ResolveTests(unittest.TestCase):
         self.assertFalse(rows["process.promote_after"]["executed"])
         self.assertFalse(rows["process.cold_after_days"]["executed"])
 
+    def test_author_side_axes_have_no_consumer_and_say_so(self) -> None:
+        """The three author-side axes are recorded, not executed (measured 2026-11-13).
+
+        An earlier version of ``EXECUTED_SUBKEYS`` listed them on the belief that the
+        platform's injection ladder and host reconciliation read them. The audit found
+        no such consumer: ``memoryNamespaceFor`` ignores ``store.home``, the ladder
+        reads ``fleets.knowledge_profile`` rather than ``manifest.memory.read``, and
+        there is no runtime gate for ``write.authority``. Marking them executed made
+        the read face claim a policy was in force; this test pins the honest answer so
+        the claim cannot creep back without a consumer.
+        """
+        rows = self.rows(
+            (
+                "agent",
+                {
+                    "store": {"home": "fleet"},
+                    "read": {"scope": "off", "budget": 800},
+                    "write": {"authority": "shared"},
+                },
+            )
+        )
+        for sub in ("store.home", "read.scope", "read.budget", "write.authority"):
+            with self.subTest(sub=sub):
+                self.assertFalse(rows[sub]["executed"], sub)
+        self.assertEqual(
+            unexecuted(rows),
+            ["store.home", "read.scope", "read.budget", "write.authority"],
+        )
+        # …while the declared values are still reported faithfully.
+        self.assertEqual(rows["store.home"]["declared"], "fleet")
+        self.assertEqual(rows["read.scope"]["effective"], "off")
+        self.assertTrue(rows["process.distill"]["executed"])
+
     def test_row_order_is_stable(self) -> None:
         rows = self.rows(("agent", {}))
         self.assertEqual(

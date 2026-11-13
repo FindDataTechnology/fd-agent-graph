@@ -84,20 +84,26 @@ PLATFORM_DEFAULTS: dict[str, dict[str, Any]] = {
 #: a value and is reported as NOT executed, so a reader is never told that a
 #: declared policy is in force when no code reads it.
 #:
-#: Author-side consumers: store/read/write are consumed by the injection ladder and
-#: the host reconciliation. Processing-side: only `distill` has a consumer today —
-#: `promote_after` has no per-page evidence counter to threshold, and
-#: `cold_after_days` has no eviction pass. Both are declared, resolved, and
-#: reported as unexecuted rather than wired to a nearby-looking field.
-EXECUTED_SUBKEYS = frozenset(
-    {
-        "store.home",
-        "read.scope",
-        "read.budget",
-        "write.authority",
-        "process.distill",
-    }
-)
+#: Measured 2026-11-13 across paas, fd-memory and agent-runner — the判据 is "which
+#: code reads it", not "does it resolve":
+#:
+#: * ``process.distill`` — fd-memory's scheduler reads the pack root's policy row.
+#: * ``store.home`` — nobody: ``yongyi-client``'s ``memoryNamespaceFor`` returns
+#:   ``d/<pack>/<agent>`` unconditionally and never looks at ``home``.
+#: * ``read.scope`` / ``read.budget`` — nobody reads the PACK's declaration; the
+#:   injection ladder reads the member's knowledge profile (cell default plus
+#:   ``fleets.knowledge_profile``), never ``manifest.memory.read``.
+#: * ``write.authority`` — no runtime gate; the spec carries it by prose discipline
+#:   (``agents[].memory.guidance``) and manifest validation. That is a deliberate
+#:   design for this axis, but it is not a consumer reading the declaration.
+#: * ``promote_after`` / ``cold_after_days`` — no evidence counter, no eviction pass.
+#:
+#: An earlier version of this set listed the three author-side axes as executed on
+#: the belief that the platform consumed them; the audit above found no such
+#: consumer. Marking them unexecuted is the honest reading, and it is what the
+#: shared fixture's own note says ("store/read/write are author-side axes the
+#: memory service does not implement").
+EXECUTED_SUBKEYS = frozenset({"process.distill"})
 
 #: Shapes that mean "an address", refused before the enum check so the error can
 #: explain the rule instead of just listing three allowed words.
