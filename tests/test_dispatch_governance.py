@@ -18,7 +18,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.host_fixture import HostFixture
+from tests.host_fixture import module_host
 
 PKG = Path(__file__).resolve().parents[1]
 HOOK = PKG / "scripts" / "dispatch_hook.py"
@@ -29,7 +29,7 @@ MORNING = '{"prompt": "you are the implementer"}'
 #: developer's laptop: on a runner with no `~/.agents/skills` and no workspace
 #: `.mcp.json` the hook denies every crew dispatch as `binding.mcp.missing`, and
 #: `test_finished_run_denies` passes for entirely the wrong reason.
-HOST = HostFixture(ROSTER).__enter__()
+HOST = module_host(ROSTER)
 
 
 def run_hook(stdin_text: str, **env_extra: str) -> subprocess.CompletedProcess:

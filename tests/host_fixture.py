@@ -14,6 +14,7 @@ cannot make this fixture quietly incomplete.
 
 from __future__ import annotations
 
+import atexit
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -70,4 +71,18 @@ class HostFixture:
         }
 
 
-__all__ = ["HostFixture", "roster_bindings"]
+def module_host(roster: Path) -> HostFixture:
+    """A host for a module-level test fixture, cleaned up when the process exits.
+
+    `unittest` only offers `addModuleCleanup` from inside `setUpModule`, so the two
+    modules that need a host at class scope would otherwise leak a temporary
+    directory on every run - small, but the same shape as any other fixture that is
+    built and never torn down.
+    """
+    fixture = HostFixture(roster)
+    fixture.__enter__()
+    atexit.register(fixture.__exit__, None, None, None)
+    return fixture
+
+
+__all__ = ["HostFixture", "module_host", "roster_bindings"]

@@ -8,7 +8,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from tests.host_fixture import HostFixture
+from tests.host_fixture import module_host
 from tempfile import TemporaryDirectory
 
 from fd_agent_graph import yamlmini
@@ -645,7 +645,7 @@ def has_errors_host(found) -> bool:
 
 
 ROSTER = Path(__file__).resolve().parents[1] / "roster" / "finddata-coding.yaml"
-HOST = HostFixture(ROSTER).__enter__()
+HOST = module_host(ROSTER)
 
 
 class DispatchHookTests(unittest.TestCase):
