@@ -1,0 +1,46 @@
+name: ci
+
+# The package's own claim is "this gate runs". Until it ran automatically, that
+# claim was a convention: two scripts and 388 tests that execute only when
+# someone remembers. A gate nobody runs is the decorative kind.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The declared floor, and a current release. `requires-python` says 3.11;
+        # testing only the newest would let a floor claim go stale silently.
+        python: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: unit tests
+        # No dependencies to install: the package is stdlib-only by design, so the
+        # suite must prove that by running on a bare interpreter.
+        run: python3 -m unittest discover -s tests -t . -v
+
+      - name: documented commands actually run
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python3 scripts/check_docs.py
+
+      - name: skill copies have not drifted
+        # On a fresh checkout the plugin copy lives outside this repository, so the
+        # gate reports a skip rather than a failure. That distinction is deliberate:
+        # a red build for a file the repository does not contain teaches people to
+        # ignore the build.
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python3 scripts/check_copies.py

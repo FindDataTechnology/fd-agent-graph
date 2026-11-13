@@ -7,7 +7,9 @@ because prose is not executed. This makes the executable half of the docs run:
 * every `python3 -m fd_agent_graph.cli <sub>` in the docs must name a real
   subcommand, and the safe ones are actually invoked;
 * every path the docs point at must exist;
-* every `# N 单测` claim must match the suite.
+* every test-count claim must match the suite, in either phrasing the docs use
+  (`# N 单测` in the pack descriptions, `实测 N 条通过` in the README) - and a
+  claim that the regex misses is a silent no-op, so "no claim found" is a failure.
 
     PYTHONPATH=. python3 fd-agent-graph/scripts/check_docs.py
 """
@@ -26,7 +28,11 @@ ROOT = PKG.parent
 DOCS = (PKG / "README.md", PKG / "docs/HANDOFF.md", PKG / "docs/host-binding-gaps.md")
 
 CLI_RE = re.compile(r"python3 -m fd_agent_graph\.cli ([a-z-]+)")
-TEST_COUNT_RE = re.compile(r"#\s*(\d+)\s*单测")
+# Both phrasings the docs actually use. Before this, the regex only matched the
+# pack-style `# N 单测`, so the README's "实测 388 条通过" was never compared to
+# anything while this gate printed "test count matches" - a green claim about a
+# check that did not run.
+TEST_COUNT_RE = re.compile(r"(?:#\s*|实测\s*)(\d+)\s*(?:单测|条通过)")
 PATH_RE = re.compile(r"`(?:fd-agent-graph/)?((?:examples|roster|scripts|pack|docs|build)/[A-Za-z0-9._/-]+)`")
 
 
@@ -149,17 +155,34 @@ def main() -> int:
             env={"PYTHONPATH": str(PKG), "PATH": "/usr/bin:/bin"},
         )
     actual = re.search(r"Ran (\d+) tests", (suite.stderr or suite.stdout)) if suite else None
+    if suite is not None and actual is None:
+        # No count in the output means the suite did not get far enough to report
+        # one. Skipping the comparison here would report "test count matches"
+        # having matched nothing, which is the failure mode this gate exists for.
+        tail = ((suite.stderr or "") + (suite.stdout or "")).strip().splitlines()
+        problems.append(
+            "could not read a test count from the suite, so no claim was verified: "
+            + (tail[-1][:160] if tail else "no output")
+        )
     if actual:
         real = int(actual.group(1))
+        seen = 0
         for doc in DOCS:
             if not doc.exists():
                 continue
             for claim in TEST_COUNT_RE.finditer(doc.read_text(encoding="utf-8")):
+                seen += 1
                 stated = int(claim.group(1))
                 if stated != real:
                     problems.append(
                         f"{doc.name}: claims {stated} tests, suite runs {real}"
                     )
+        if seen == 0:
+            # Zero-coverage green: the loop above passed by finding nothing.
+            problems.append(
+                f"no test-count claim matched in any of "
+                f"{', '.join(d.name for d in DOCS)}; the count check verified nothing"
+            )
 
     if problems:
         for item in problems:

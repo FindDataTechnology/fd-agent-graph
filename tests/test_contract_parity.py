@@ -220,5 +220,42 @@ class ExampleMetricsTest(unittest.TestCase):
         self.assertTrue(verdict.permitted)
 
 
+class PythonFloorTest(unittest.TestCase):
+    """The declared floor refuses to load, and says why.
+
+    `pyproject.toml` can only declare the floor; the interpreter is what has to
+    honour it. Measured on macOS system Python 3.9.6 before this guard existed:
+    19 unrelated ImportErrors across the suite, none of which mentioned 3.11.
+    """
+
+    def test_older_interpreters_are_refused_with_a_named_floor(self):
+        import fd_agent_graph
+
+        for old in ((3, 9, 6), (3, 10, 14), (2, 7, 18)):
+            with self.assertRaises(RuntimeError) as ctx:
+                fd_agent_graph.require_python(old)
+            message = str(ctx.exception)
+            self.assertIn("3.11", message)
+            self.assertIn(".".join(str(p) for p in old), message)
+
+    def test_the_floor_itself_and_newer_are_accepted(self):
+        import fd_agent_graph
+
+        for ok in ((3, 11, 0), (3, 12, 3), (3, 14, 3), (4, 0, 0)):
+            fd_agent_graph.require_python(ok)  # must not raise
+
+    def test_the_floor_matches_pyproject(self):
+        import tomllib
+        from pathlib import Path
+
+        import fd_agent_graph
+
+        pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+        declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        requires = declared["project"]["requires-python"]          # ">=3.11"
+        major, minor = requires.lstrip(">=").split(".")[:2]
+        self.assertEqual((int(major), int(minor)), fd_agent_graph.MINIMUM_PYTHON)
+
+
 if __name__ == "__main__":
     unittest.main()
