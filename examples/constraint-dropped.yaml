@@ -1,0 +1,99 @@
+# A converging node that keeps the patches and drops the constraints.
+#
+# This is the shape the gate exists to catch, kept as a fixture on purpose: two
+# workers each declare which files they are allowed to touch and what a reviewer
+# must see, the join consumes only `patch`, and `file_ownership` / `review_note`
+# vanish at the merge. Every downstream decision then reasons as if the branch
+# had no boundary - and nothing in the run reports it.
+#
+# `check` reports two warnings here (a graph may be edited into this shape);
+# `may-dispatch` and `run` refuse it, because after dispatch nothing can
+# recover a constraint that was already dropped.
+edges:
+  - carries:
+      - tasks
+    from: planner
+    to: w01
+  - carries:
+      - patch
+    from: w01
+    to: join
+  - carries:
+      - tasks
+    from: planner
+    to: w02
+  - carries:
+      - patch
+    from: w02
+    to: join
+entries:
+  - planner
+graph: constraint-dropped
+nodes:
+  - description: 拆任务
+    effects:
+      - read
+    id: planner
+    idempotent: true
+    inputs: {}
+    kind: agent
+    outputs:
+      tasks:
+        items:
+          type: string
+        type: array
+  - description: 第 1 路 subagent
+    effects:
+      - write
+    id: w01
+    idempotent: true
+    inputs:
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 第 2 路 subagent
+    effects:
+      - write
+    id: w02
+    idempotent: true
+    inputs:
+      tasks:
+        items:
+          type: string
+        type: array
+    kind: agent
+    outputs:
+      file_ownership:
+        constraint: true
+        type: string
+      patch:
+        type: string
+      review_note:
+        constraint: true
+        type: string
+  - description: 只收 patch，丢掉两处约束
+    effects:
+      - read
+    id: join
+    idempotent: true
+    inputs:
+      patch:
+        type: string
+    kind: join
+    outputs:
+      merged:
+        type: string
+terminals:
+  - join
+version: 1

@@ -322,6 +322,16 @@ def _verifier_findings(
     return out
 
 
+def constraint_drop_findings(graph: Graph) -> list[Finding]:
+    """The dropped-constraint findings alone, for the dispatch stage.
+
+    The gate reports these as warnings while a graph is being edited and refuses
+    on them when dispatch is requested. Both read this one function, so the two
+    severities cannot describe different sets of nodes.
+    """
+    return _constraint_findings(graph, tuple(sorted(node.id for node in graph.nodes)))
+
+
 def _constraint_findings(graph: Graph, ids: tuple[str, ...]) -> list[Finding]:
     nodes = _node_map(graph)
     known = set(ids)

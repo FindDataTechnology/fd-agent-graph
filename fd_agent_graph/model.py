@@ -6,7 +6,10 @@ node, imports a model, or contacts a service.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
+
+from .guards import Guard
 
 # Effect scale, weakest to strongest. A node's declared effects must be at least
 # as strong as the strongest effect of any tool it references.
@@ -17,6 +20,17 @@ CHECKPOINT_NODE = "node"
 CHECKPOINT_SUPERSTEP = "superstep"
 CHECKPOINT_NONE = "none"
 CHECKPOINT_POLICIES = (CHECKPOINT_NODE, CHECKPOINT_SUPERSTEP, CHECKPOINT_NONE)
+
+# How many routes one answer to a decision node may select.
+SELECT_ONE = "one"
+SELECT_MANY = "many"
+SELECT_POLICIES = (SELECT_ONE, SELECT_MANY)
+
+# Route names share the node-id charset. `done` is reserved in every letter case,
+# because `<node>.done` is an atom of the guard grammar; a route of the same name
+# could not be told apart from it.
+ROUTE_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+RESERVED_ROUTE = "done"
 
 # Node kinds. `verify` and `approve` are structural roles the analysis looks for,
 # not mere labels: verifier coverage and spend guarding depend on them.
@@ -126,6 +140,19 @@ class Node:
     tools: tuple[ToolRef, ...] = ()
     subgraph: str | None = None
     description: str = ""
+    #: Route name -> the plain-language condition under which that route is
+    #: selected. Declaring routes makes this node a decision node.
+    routes: tuple[tuple[str, str], ...] = ()
+    #: How many routes one answer may select (`one` or `many`); None unless
+    #: `routes` is declared.
+    select: str | None = None
+    #: Guard deciding whether this node runs at all. A false guard settles the
+    #: node as not executed rather than skipping its dependents.
+    when: Guard | None = None
+    #: Raw guard text, kept so a parse failure can be reported as a finding
+    #: instead of making the whole file unreadable.
+    when_source: str | None = None
+    when_error: str | None = None
 
     def input(self, name: str) -> Port | None:
         for port in self.inputs:
@@ -147,17 +174,34 @@ class Node:
     def is_approval_guard(self) -> bool:
         return self.kind == KIND_APPROVE
 
+    @property
+    def is_decision(self) -> bool:
+        return bool(self.routes)
+
+    def route_names(self) -> tuple[str, ...]:
+        return tuple(name for name, _ in self.routes)
+
+    def route_condition(self, name: str) -> str | None:
+        for route, condition in self.routes:
+            if route == name:
+                return condition
+        return None
+
 
 @dataclass(frozen=True, slots=True)
 class Edge:
     source: str
     target: str
     carries: tuple[str, ...] = ()
-    when: str | None = None
+    #: Parsed guard; None when absent or when the text could not be parsed
+    #: (`when_source` and `when_error` then carry the evidence).
+    when: Guard | None = None
+    when_source: str | None = None
+    when_error: str | None = None
 
     @property
     def key(self) -> tuple[str, str, str]:
-        return (self.source, self.target, self.when or "")
+        return (self.source, self.target, self.when_source or "")
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,6 +238,10 @@ class Graph:
 
     def outgoing(self, node_id: str) -> tuple[Edge, ...]:
         return tuple(e for e in self.edges if e.source == node_id)
+
+    def incoming_sources(self, node_id: str) -> tuple[str, ...]:
+        """Direct predecessors, deduplicated and sorted."""
+        return tuple(sorted({e.source for e in self.edges if e.target == node_id}))
 
     def effective_entries(self) -> tuple[str, ...]:
         """Declared entries, else nodes with no incoming edge."""

@@ -10,6 +10,7 @@ import unittest
 
 from fd_agent_graph import codes
 from fd_agent_graph.checks import static_findings, structural_findings
+from fd_agent_graph.guards import parse_guard
 from fd_agent_graph.model import (
     ANY,
     CHECKPOINT_NODE,
@@ -38,6 +39,9 @@ def make_node(
     checkpoint: str = CHECKPOINT_NONE,
     tools=(),
     subgraph: str | None = None,
+    routes=(),
+    select: str | None = None,
+    when=None,
 ) -> Node:
     return Node(
         id=node_id,
@@ -49,6 +53,10 @@ def make_node(
         checkpoint=checkpoint,
         tools=tuple(tools),
         subgraph=subgraph,
+        routes=tuple(routes),
+        select=select,
+        when=parse_guard(when) if isinstance(when, str) else when,
+        when_source=when if isinstance(when, str) else None,
     )
 
 
@@ -231,29 +239,25 @@ class StructuralChecksTest(unittest.TestCase):
 
     # ---- UNKNOWN_ROUTE_FIELD -------------------------------------------
     def test_unknown_route_field(self):
+        # A guard speaks about routes, not about output ports. `score` is a port
+        # name the old grammar accepted; under the closed grammar the atom names
+        # node `a`, which declares no routes, so nothing about it can be decided.
         graph = make_graph(
             [make_node("a"), make_node("b")],
-            edges=(Edge("a", "b", when="score >= 1 and y > 0"),),
+            edges=(Edge("a", "b", when=parse_guard("a.score")),),
         )
         findings = by_code(structural_findings(graph), codes.UNKNOWN_ROUTE_FIELD)
         self.assertEqual(1, len(findings))
-        self.assertIn("score", findings[0].message)
-        self.assertNotIn("y", findings[0].message.replace("y > 0", ""))
-        self.assertIn("y", findings[0].fix)
+        self.assertIn("a.score", findings[0].message)
+        self.assertIn("declare `routes`", findings[0].fix)
 
-    def test_route_on_declared_output_is_fine(self):
+    def test_guard_on_a_declared_route_is_fine(self):
         graph = make_graph(
-            [make_node("a"), make_node("b")],
-            edges=(Edge("a", "b", when="y > 3"),),
-        )
-        self.assertNotIn(
-            codes.UNKNOWN_ROUTE_FIELD, code_list(structural_findings(graph))
-        )
-
-    def test_route_literals_are_ignored(self):
-        graph = make_graph(
-            [make_node("a"), make_node("b")],
-            edges=(Edge("a", "b", when="y is not None and true"),),
+            [
+                make_node("a", routes=(("yes", "ok"), ("no", "not ok")), select="one"),
+                make_node("b"),
+            ],
+            edges=(Edge("a", "b", when=parse_guard("a.yes")),),
         )
         self.assertNotIn(
             codes.UNKNOWN_ROUTE_FIELD, code_list(structural_findings(graph))
@@ -443,6 +447,25 @@ ALL_CODES = {
     codes.EFFECT_UNDER_DECLARED,
     codes.MONEY_UNGUARDED,
     codes.NON_IDEMPOTENT_RETRY,
+    # ---- conditional routing (add-graph-conditional-dispatch) ----------
+    codes.GUARD_INVALID_EDGE,
+    codes.GUARD_INVALID_NODE,
+    codes.ROUTE_INVALID,
+    codes.ROUTE_WITHOUT_CONDITION,
+    codes.SELECT_INVALID,
+    codes.SELECT_WITHOUT_ROUTES,
+    codes.SELECT_UNSATISFIABLE,
+    codes.GUARD_INCOMPLETE,
+    codes.GUARD_ATOM_OUTSIDE_DEPS,
+    codes.INPUT_FROM_UNEXECUTED,
+}
+
+#: Declared but never raised by a definition check: they belong to the dispatch
+#: stage and the charter, which no static analysis over a definition reaches.
+DISPATCH_ONLY_CODES = {
+    codes.CONSTRAINT_DROPPED_AT_DISPATCH,
+    codes.CHARTER_EXPANDS_TOOLS,
+    codes.CHARTER_EXTENDS_DEADLINE,
 }
 
 
@@ -488,10 +511,57 @@ def structural_kitchen_sink() -> Graph:
                 checkpoint=CHECKPOINT_NONE,
             ),
         ),
-        edges=(Edge("dup", "ghost", carries=("nope",), when="score > 3"),),
+        edges=(
+            Edge("dup", "ghost", carries=("nope",), when=parse_guard("dup.y")),
+        ),
         entries=("dup", "ghost"),
         graph_inputs=(Port("x", ANY),),
         unresolved=("dup",),
+    )
+
+
+
+def conditional_kitchen_sink() -> Graph:
+    """One graph that trips every conditional-routing rule.
+
+    Built in IR rather than YAML on purpose: a malformed guard cannot survive a
+    YAML round-trip (the loader keeps it as `when_source` + `when_error`), and the
+    point here is that the checks read those fields, not that the loader produces
+    them. `tests/test_conditional_checks.py` covers the YAML path.
+    """
+    reserved_case = make_node(
+        "d1", routes=(("done", "x"), ("Ready", ""), ("ready", "y")), select="one"
+    )
+    no_routes = make_node("d2", select="many")
+    bad_select = make_node("d3", routes=(("a", "x"), ("b", "y")), select="weird")
+    one_route = make_node("d4", routes=(("only", "x"),), select="one")
+    bad_node_guard = Node(
+        id="bn",
+        inputs=DEFAULT_INPUTS,
+        outputs=DEFAULT_OUTPUTS,
+        effects=("read",),
+        idempotent=True,
+        checkpoint=CHECKPOINT_NONE,
+        when_source="x.y and",
+        when_error="expected <node>.<route> at offset 7 in 'x.y and'",
+    )
+    outside = make_node("outside", when="ghost.done")
+    merge = make_node("merge", when="d1.done")
+    gated = make_node("p", when="d1.done")
+    consumer = make_node("c")
+
+    return make_graph(
+        [reserved_case, no_routes, bad_select, one_route, bad_node_guard, outside, merge, gated, consumer],
+        edges=(
+            Edge("d1", "outside"),
+            Edge("d2", "bn", when_source="x.y or", when_error="expected <node>.<route> at offset 5"),
+            Edge("d3", "merge"),
+            Edge("d4", "merge"),
+            Edge("d1", "p"),
+            Edge("p", "c", carries=("x",)),
+        ),
+        entries=("d1", "d2", "d3", "d4"),
+        terminals=("outside", "bn", "merge", "c"),
     )
 
 
@@ -519,7 +589,12 @@ def static_kitchen_sinks() -> list[Graph]:
 
 class ContractTest(unittest.TestCase):
     def _all_graphs(self):
-        return [Graph(name="empty"), structural_kitchen_sink(), *static_kitchen_sinks()]
+        return [
+            Graph(name="empty"),
+            structural_kitchen_sink(),
+            conditional_kitchen_sink(),
+            *static_kitchen_sinks(),
+        ]
 
     def test_every_finding_uses_a_declared_code_and_has_a_fix(self):
         seen: set[str] = set()
@@ -531,6 +606,11 @@ class ContractTest(unittest.TestCase):
                     self.assertTrue(finding.fix.strip(), f"{finding.code} has no fix")
                     seen.add(finding.code)
         self.assertEqual(ALL_CODES, seen)
+        # The dispatch-stage and charter codes are declared but unreachable from
+        # a definition; if one starts appearing here it moved layers silently.
+        self.assertEqual(set(), seen & DISPATCH_ONLY_CODES)
+        for code in DISPATCH_ONLY_CODES:
+            self.assertIn(code, codes.SEVERITIES)
 
     def test_both_functions_are_deterministic(self):
         for graph in self._all_graphs():

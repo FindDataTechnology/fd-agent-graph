@@ -12,8 +12,10 @@ import json
 from dataclasses import dataclass
 
 from . import codes
+from .binding import EffectiveFace, Roster, effective_faces
 from .checks import static_findings, structural_findings
 from .model import SEVERITY_ERROR, Graph, Finding, finding
+from .topology import constraint_drop_findings
 from .topology import TopologyDiff, TopologyReport, analyse, diff
 from .typing_check import port_findings
 
@@ -112,6 +114,42 @@ def collect(graph: Graph) -> tuple[Finding, ...]:
     return tuple(unique)
 
 
+def dispatch_findings(
+    graph: Graph,
+    roster: Roster | None = None,
+    charters=(),
+) -> tuple[Finding, ...]:
+    """Findings that exist only because a dispatch is about to happen.
+
+    Kept out of :func:`collect` on purpose. Editing a graph is allowed to have
+    intermediate states - `init` produces exactly that shape - so these are
+    warnings while the graph is being written and refusals only when someone is
+    about to launch workers against it.
+
+    Two of them:
+
+    * a constraint dropped at a converging node, because after dispatch no
+      downstream step can recover it;
+    * a charter that widens an agent's face, because a face that can be widened
+      at dispatch makes the roster advisory.
+    """
+    found: list[Finding] = []
+    for item in constraint_drop_findings(graph):
+        found.append(
+            finding(
+                codes.CONSTRAINT_DROPPED_AT_DISPATCH,
+                item.location,
+                item.message,
+                item.fix,
+                severity=codes.severity(codes.CONSTRAINT_DROPPED_AT_DISPATCH),
+            )
+        )
+    if roster is not None:
+        for face in effective_faces(roster, tuple(charters)):
+            found.extend(face.findings)
+    return tuple(found)
+
+
 def check(graph: Graph) -> GateReport:
     findings = collect(graph)
     report = analyse(graph)
@@ -125,7 +163,13 @@ def check(graph: Graph) -> GateReport:
     )
 
 
-def may_dispatch(graph: Graph, concurrency: int) -> DispatchVerdict:
+def may_dispatch(
+    graph: Graph,
+    concurrency: int,
+    *,
+    roster: Roster | None = None,
+    charters=(),
+) -> DispatchVerdict:
     """Whether the graph can run `concurrency` workers, and whether it is worth it.
 
     Capacity (width) is a geometric limit and blocks. Payoff (speed-up ceiling =
@@ -136,6 +180,18 @@ def may_dispatch(graph: Graph, concurrency: int) -> DispatchVerdict:
     report = check(graph)
     width = report.width
     ceiling = report.ceiling
+
+    extra = dispatch_findings(graph, roster, charters)
+    if extra:
+        findings = tuple(sorted(report.findings + extra, key=lambda f: f.sort_key()))
+        report = GateReport(
+            graph=report.graph,
+            findings=findings,
+            width=report.width,
+            critical_path=report.critical_path,
+            total_cost=report.total_cost,
+            ceiling=report.ceiling,
+        )
 
     if report.errors:
         names = ", ".join(sorted({f"{f.code}@{f.location}" for f in report.errors}))

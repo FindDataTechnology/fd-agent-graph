@@ -25,7 +25,11 @@ from .gate import (
     may_dispatch,
     topology_diff,
 )
+from .binding import Charter, effective_faces, load_roster
+from .dispatch import DispatchRecord, default_record_path
 from .loader import graph_to_dict, load_graph
+from .runner import ExecutionError, PortRouteResolver
+from .runner import run as run_graph
 from .model import GraphError, SEVERITY_ERROR
 
 DEFAULT_SUBGRAPH_ROOT = None  # None => resolve beside the definition file
@@ -190,6 +194,155 @@ def cmd_may_dispatch(args: argparse.Namespace) -> int:
     }
     print(json.dumps(payload, ensure_ascii=False, indent=1))
     return 0 if verdict.permitted else 1
+
+
+def _load_resolver(spec: str):
+    """`module:callable` -> a resolver instance, or (None, error)."""
+    if not spec:
+        return PortRouteResolver(), None
+    module_name, _, attr = spec.partition(":")
+    if not module_name or not attr:
+        return None, f"--resolver expects module:callable, got {spec!r}"
+    try:
+        module = __import__(module_name, fromlist=[attr])
+        factory = getattr(module, attr)
+        return factory(), None
+    except Exception as exc:  # a bad resolver is an invocation error, not a crash
+        return None, f"could not load resolver {spec!r}: {type(exc).__name__}: {exc}"
+
+
+def _load_impls(spec: str):
+    """`module:factory` -> {node id: implementation}."""
+    module_name, _, attr = spec.partition(":")
+    if not module_name or not attr:
+        return None, f"--impl expects module:factory, got {spec!r}"
+    try:
+        module = __import__(module_name, fromlist=[attr])
+        factory = getattr(module, attr)
+        table = factory()
+    except Exception as exc:
+        return None, f"could not load implementations {spec!r}: {type(exc).__name__}: {exc}"
+    if not isinstance(table, dict):
+        return None, f"{spec!r} returned {type(table).__name__}, expected a dict of node id -> callable"
+    return table, None
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    """Gate first, then execute. There is no path to execution that skips the gate."""
+    graph, error = _load(args.graph)
+    if graph is None:
+        print(error, file=sys.stderr)
+        return EXIT_UNREADABLE
+    graph, error = _maybe_expand(args, graph)
+    if graph is None:
+        print(error, file=sys.stderr)
+        return EXIT_UNREADABLE
+    if args.concurrency <= 0:
+        print(
+            f"error: --concurrency must be a positive integer, got {args.concurrency}",
+            file=sys.stderr,
+        )
+        return EXIT_UNREADABLE
+
+    roster = None
+    if args.roster:
+        try:
+            roster = load_roster(Path(args.roster))
+        except GraphError as exc:
+            print(str(exc), file=sys.stderr)
+            return EXIT_UNREADABLE
+
+    charters, error = _load_charters(args.charter_file)
+    if error:
+        print(error, file=sys.stderr)
+        return EXIT_UNREADABLE
+
+    faces = effective_faces(roster, charters) if roster is not None else ()
+    verdict = may_dispatch(graph, args.concurrency, roster=roster, charters=charters)
+    report = check(graph)
+
+    overridden = False
+    overridden_codes: tuple[str, ...] = ()
+    if not verdict.permitted:
+        if not args.force:
+            record = DispatchRecord.build(graph, verdict, report, faces=faces)
+            record.write(args.record or default_record_path(args.graph))
+            print(record.to_json())
+            return EXIT_FINDINGS
+        overridden = True
+        overridden_codes = tuple(sorted({f.code for f in verdict.blocking}))
+
+    record = DispatchRecord.build(
+        graph, verdict, report, faces=faces, overridden=overridden, overridden_codes=overridden_codes
+    )
+
+    resolver, error = _load_resolver(args.resolver)
+    if error:
+        record.with_error(error).write(args.record or default_record_path(args.graph))
+        print(error, file=sys.stderr)
+        return EXIT_UNREADABLE
+
+    impls, error = _load_impls(args.impl)
+    if error:
+        record.with_error(error).write(args.record or default_record_path(args.graph))
+        print(error, file=sys.stderr)
+        return EXIT_UNREADABLE
+
+    try:
+        trace = run_graph(
+            graph,
+            impls,
+            start=json.loads(args.start) if args.start else None,
+            max_steps=args.max_steps,
+            resolver=resolver,
+        )
+    except ExecutionError as exc:
+        record.with_error(str(exc))
+        target = args.record or default_record_path(args.graph)
+        if target == "-":
+            record.write("-")
+        else:
+            path = record.write(target)
+            print(
+                json.dumps(
+                    {"graph": graph.name, "error": str(exc), "record": str(path)},
+                    ensure_ascii=False,
+                    indent=1,
+                )
+            )
+        return EXIT_FINDINGS
+
+    record.with_outcomes(trace)
+    target = args.record or default_record_path(args.graph)
+    if target == "-":
+        # stdout is the record itself; printing a second copy would make the
+        # output unparseable, and the record is the thing worth parsing.
+        record.write("-")
+    else:
+        path = record.write(target)
+        payload = record.as_dict()
+        payload["record"] = str(path)
+        print(json.dumps(payload, ensure_ascii=False, indent=1, sort_keys=True))
+    if overridden and not args.accept_forced:
+        # A forced dispatch still reports the refusal it went past.
+        return EXIT_FINDINGS
+    return EXIT_OK
+
+
+def _load_charters(path: str):
+    if not path:
+        return (), None
+    try:
+        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return (), f"could not read --charter-file {path!r}: {exc}"
+    entries = raw.get("charters") if isinstance(raw, dict) else raw
+    if not isinstance(entries, list):
+        return (), "--charter-file must hold a list, or an object with 'charters'"
+    try:
+        return tuple(Charter.from_dict(item, where=path) for item in entries), None
+    except GraphError as exc:
+        return (), str(exc)
 
 
 def cmd_baseline(args: argparse.Namespace) -> int:
@@ -570,6 +723,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--concurrency", type=int, required=True)
     p.add_argument("--json", action="store_true", default=True, help="accepted for uniformity; output is always JSON")
     p.set_defaults(func=cmd_may_dispatch)
+
+    p = sub.add_parser("run", help="gate, then execute the graph through the runner")
+    p.add_argument("graph")
+    p.add_argument("--impl", required=True, help="module:factory returning {node id: callable}")
+    p.add_argument("--concurrency", type=int, required=True)
+    p.add_argument("--resolver", default="", help="module:factory returning a route resolver")
+    p.add_argument("--roster", default="", help="roster file for charter resolution")
+    p.add_argument("--charter-file", default="", help="JSON list of charters narrowing the roster")
+    p.add_argument("--record", default="", help="record path; default <graph>.dispatch.json, '-' for stdout")
+    p.add_argument("--start", default="", help="JSON object seeding shared state")
+    p.add_argument("--max-steps", type=int, default=100)
+    p.add_argument("--force", action="store_true", default=False, help="proceed past blocking findings, recorded as overridden")
+    p.add_argument("--accept-forced", action="store_true", default=False, help="exit 0 even though the dispatch was overridden")
+    p.add_argument("--json", action="store_true", default=True, help="accepted for uniformity; output is always JSON")
+    p.set_defaults(func=cmd_run)
 
     p = sub.add_parser("baseline", help="compare the graph with its linear baseline")
     p.add_argument("graph")

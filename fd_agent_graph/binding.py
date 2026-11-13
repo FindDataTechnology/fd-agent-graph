@@ -19,7 +19,8 @@ from pathlib import Path
 
 from . import yamlmini
 from .loader import _parse_ports  # same package: one port grammar, no second copy
-from .model import GraphError, Port
+from . import codes
+from .model import SEVERITY_ERROR, Finding, GraphError, Port, finding
 
 MEMORY_PRIVATE = "private"
 MEMORY_SHARED = "shared"
@@ -83,11 +84,13 @@ class AgentSpec:
     #: The host agent definition this role maps to, if one exists. A role with no
     #: host agent is a plan, not a thing that can be dispatched.
     host_agent: str = ""
-    #: How many instances of this agent the roster runs in parallel. A template
-    #: models one worker node; the roster decides whether it runs once or six
-    #: times. Convergence only exists when this is > 1, so the constraint check
-    #: needs it.
+    #: How many instances of this agent runs in parallel. A template models one
+    #: worker node; the roster decides whether it runs once or six times.
     parallel: int = 1
+    #: Wall-clock budget the agent is configured with. A charter may shorten it
+    #: and may not extend it: a deadline that can be raised at dispatch is not a
+    #: budget, it is a suggestion.
+    deadline_seconds: int | None = None
 
     @property
     def constraint_outputs(self) -> tuple[Port, ...]:
@@ -177,6 +180,22 @@ def _parse_memory(raw: object, where: str) -> dict[str, dict]:
     return result["declaration"]
 
 
+def _parse_deadline(raw: object, agent_id: str, where: str) -> int | None:
+    if raw is None:
+        return None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise GraphError(
+            f"{where}: agent {agent_id!r} has a non-integer 'deadline_seconds'"
+        ) from exc
+    if value < 1:
+        raise GraphError(
+            f"{where}: agent {agent_id!r} declares deadline_seconds={value}, must be >= 1"
+        )
+    return value
+
+
 def _parse_agent(raw: object, where: str, index: int) -> AgentSpec:
     if not isinstance(raw, dict):
         raise GraphError(f"{where}: agent entry #{index} is not a mapping")
@@ -226,6 +245,7 @@ def _parse_agent(raw: object, where: str, index: int) -> AgentSpec:
         memory=memory,
         host_agent=str(raw.get("host_agent", "")).strip(),
         parallel=parallel,
+        deadline_seconds=_parse_deadline(raw.get("deadline_seconds"), agent_id, where),
     )
 
 
@@ -310,6 +330,8 @@ def roster_to_dict(roster: Roster) -> dict:
             entry["host_agent"] = spec.host_agent
         if spec.parallel != 1:
             entry["parallel"] = spec.parallel
+        if spec.deadline_seconds is not None:
+            entry["deadline_seconds"] = spec.deadline_seconds
         if spec.inputs:
             entry["inputs"] = ports(spec.inputs)
         if spec.outputs:
@@ -323,3 +345,169 @@ def roster_to_dict(roster: Roster) -> dict:
         data["memory"] = {axis: dict(keys) for axis, keys in roster.memory.items()}
     data["agents"] = agents
     return data
+
+
+# ---------------------------------------------------------------------------
+# charters: what one dispatch may ask of an already-configured agent
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Charter:
+    """A narrowing request for one agent, valid for one dispatch.
+
+    Everything here is a *ceiling to lower*, never a floor to raise: a charter
+    names fewer tools than the agent has, or a shorter deadline than the agent is
+    configured with. That direction is the whole point - a dispatch that could
+    widen a face would make the roster advisory, because every caller would
+    simply ask for everything.
+    """
+
+    agent: str
+    tools: tuple[str, ...] | None = None
+    deadline_seconds: int | None = None
+
+    @classmethod
+    def from_dict(cls, raw: object, where: str = "<memory>") -> "Charter":
+        if not isinstance(raw, dict):
+            raise GraphError(f"{where}: charter entry is not a mapping")
+        agent = str(raw.get("agent", "")).strip()
+        if not agent:
+            raise GraphError(f"{where}: charter entry has no 'agent'")
+        tools = raw.get("tools")
+        if tools is None:
+            parsed_tools = None
+        else:
+            if isinstance(tools, str):
+                tools = [tools]
+            parsed_tools = tuple(sorted({str(t).strip() for t in tools if str(t).strip()}))
+        deadline = raw.get("deadline_seconds")
+        if deadline is not None:
+            try:
+                deadline = int(deadline)
+            except (TypeError, ValueError) as exc:
+                raise GraphError(
+                    f"{where}: charter for {agent!r} has a non-integer "
+                    "'deadline_seconds'"
+                ) from exc
+            if deadline < 1:
+                raise GraphError(
+                    f"{where}: charter for {agent!r} declares "
+                    f"deadline_seconds={deadline}, must be >= 1"
+                )
+        return cls(agent=agent, tools=parsed_tools, deadline_seconds=deadline)
+
+
+@dataclass(frozen=True, slots=True)
+class EffectiveFace:
+    """What the dispatch actually runs on, after the charter has been applied.
+
+    Recorded as *effective* values rather than declared ones: a record that shows
+    what was asked for cannot answer "which tools could that run reach".
+    """
+
+    agent: str
+    tools: tuple[str, ...] | None
+    deadline_seconds: int | None
+    findings: tuple[Finding, ...] = ()
+
+    @property
+    def ok(self) -> bool:
+        return not any(f.severity == SEVERITY_ERROR for f in self.findings)
+
+    def as_dict(self) -> dict[str, object]:
+        data: dict[str, object] = {"agent": self.agent}
+        data["tools"] = None if self.tools is None else list(self.tools)
+        data["deadline_seconds"] = self.deadline_seconds
+        if self.findings:
+            data["findings"] = [f.as_dict() for f in self.findings]
+        return data
+
+
+def effective_face(agent: AgentSpec, charter: Charter | None) -> EffectiveFace:
+    """Intersect a charter with an agent's configured face.
+
+    Narrowing is silent (that is the normal case). Widening is an error, named
+    with both values, because the caller cannot tell from the manifest which of
+    the two it just did.
+    """
+    findings: list[Finding] = []
+
+    if charter is None:
+        return EffectiveFace(agent=agent.id, tools=agent.tools, deadline_seconds=agent.deadline_seconds)
+
+    tools = agent.tools
+    if charter.tools is not None:
+        if agent.tools is None:
+            # The roster constrains nothing, so any subset is a narrowing.
+            tools = charter.tools
+        else:
+            extra = sorted(set(charter.tools) - set(agent.tools))
+            if extra:
+                findings.append(
+                    finding(
+                        codes.CHARTER_EXPANDS_TOOLS,
+                        f"agent:{agent.id}",
+                        f"charter for {agent.id!r} requests tool(s) the agent is not "
+                        f"configured with: {', '.join(extra)}",
+                        f"ask for a subset of the agent's configured tools "
+                        f"({', '.join(sorted(agent.tools)) or '(none)'}), or configure "
+                        "the tool on the agent instead",
+                    )
+                )
+                tools = agent.tools
+            else:
+                tools = tuple(sorted(set(charter.tools)))
+
+    deadline = agent.deadline_seconds
+    if charter.deadline_seconds is not None:
+        if agent.deadline_seconds is None:
+            deadline = charter.deadline_seconds
+        elif charter.deadline_seconds > agent.deadline_seconds:
+            findings.append(
+                finding(
+                    codes.CHARTER_EXTENDS_DEADLINE,
+                    f"agent:{agent.id}",
+                    f"charter for {agent.id!r} asks for {charter.deadline_seconds}s but "
+                    f"the agent is configured with {agent.deadline_seconds}s",
+                    f"ask for {agent.deadline_seconds}s or less; a deadline that can be "
+                    "raised at dispatch is not a budget",
+                )
+            )
+            deadline = agent.deadline_seconds
+        else:
+            deadline = charter.deadline_seconds
+
+    return EffectiveFace(
+        agent=agent.id, tools=tools, deadline_seconds=deadline, findings=tuple(findings)
+    )
+
+
+def effective_faces(
+    roster: Roster, charters: tuple[Charter, ...] = ()
+) -> tuple[EffectiveFace, ...]:
+    """Resolve every charter against the roster, naming any unknown agent."""
+    by_id = {spec.id: spec for spec in roster.agents}
+    faces: list[EffectiveFace] = []
+    for charter in charters:
+        agent = by_id.get(charter.agent)
+        if agent is None:
+            faces.append(
+                EffectiveFace(
+                    agent=charter.agent,
+                    tools=None,
+                    deadline_seconds=None,
+                    findings=(
+                        finding(
+                            codes.CHARTER_UNKNOWN_AGENT,
+                            f"agent:{charter.agent}",
+                            f"charter names agent {charter.agent!r}, which the roster "
+                            "does not declare",
+                            "declare the agent in the roster, or drop the charter",
+                        ),
+                    ),
+                )
+            )
+            continue
+        faces.append(effective_face(agent, charter))
+    return tuple(faces)

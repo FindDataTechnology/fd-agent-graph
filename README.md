@@ -14,8 +14,11 @@
 |---|---|---|
 | 跨节点端口类型系统 | 没人做（`arXiv:2607.27578` 给了判据没给实现） | `assignable()`：结构型 + 宽度子类型 |
 | 拓扑作为被测单元 | 没有（现有框架只测节点输出） | `topology.py` |
-| 扇入约束丢失 | 只有论文量化（`arXiv:2605.08647`），无工具 | `graph.topology.constraint-dropped` |
-| 图级 CI | 没有 | `check` / `may-dispatch` 退出码 |
+| 扇入约束丢失 | 只有论文量化（`arXiv:2605.08647`），无工具 | `graph.topology.constraint-dropped`（编辑期 warning）/ `graph.dispatch.constraint-dropped`（派发期 error） |
+| 条件边只声明不求值 | 声明了 `when` 但运行时当普通依赖 | `guards.py` 闭语法 + `runner.py` 三值求值 |
+| 未执行与"跑了没通过"分不清 | 通常折进失败计数 | `not_executed` + 三因（`when_false` / `when_unknown` / `upstream_not_executed`） |
+| 派发可以绕过裁决 | 常见 | `run` 先过 `gate`，`--force` 也必须留痕 |
+| 图级 CI | 没有 | `check` / `may-dispatch` / `run` 退出码 |
 
 ## 用法
 
@@ -26,6 +29,8 @@ export PYTHONPATH=.
 python3 -m fd_agent_graph.cli check examples/fanout-12.yaml          # 全量门禁
 python3 -m fd_agent_graph.cli metrics examples/fanout-12.yaml        # 宽度 / 关键路径 / 加速上限
 python3 -m fd_agent_graph.cli may-dispatch examples/fanout-12.yaml --concurrency 12
+python3 -m fd_agent_graph.cli run examples/fanout-12.yaml --impl tests.fixtures_impl:factory \
+    --concurrency 12 --record -                                  # 先过闸，再执行，落派发记录
 python3 -m fd_agent_graph.cli baseline examples/fanout-12.yaml       # 与线性基线对比
 python3 -m fd_agent_graph.cli diff before.yaml after.yaml            # 拓扑差分
 python3 -m fd_agent_graph.cli init <change>/tasks.md --out g.yaml    # 从任务单生成骨架
@@ -34,7 +39,7 @@ python3 -m fd_agent_graph.cli codes                                  # 违规码
 
 退出码：`0` 无阻断发现 / `1` 有 error 级发现或容量不足 / `2` 图压根读不了。
 
-**九个命令都接受 `--json`**：本就输出 JSON 的当无操作（`metrics`/`baseline`/`diff`/`codes`/`may-dispatch`），
+**十二个命令都接受 `--json`**：本就输出 JSON 的当无操作（`metrics`/`baseline`/`diff`/`codes`/`may-dispatch`），
 `init --json` 输出 JSON 而非 YAML。CI 包装器可以统一追加。
 
 **两个数要分开读**（这是最容易误读的地方）：
@@ -43,6 +48,12 @@ python3 -m fd_agent_graph.cli codes                                  # 违规码
 - **speed_up_ceiling**（总工作量 / 关键路径）是渐进收益。超过它**放行只警告**：多开的人照跑，只是不再按比例变快，因为串行的头尾封顶。它是形状上界，不是实测吞吐，**更不是并发上限**。
 
 例：`examples/fanout-12.yaml` 宽度 12、上限 3.75 —— 12 个 worker 能跑，只是只值 3.75×。
+
+**条件边与未执行**（`add-graph-conditional-dispatch`）：节点可以声明 `routes` + `select` 成为决策节点，
+边和节点都可以带 `when` 守卫（闭语法：`<node>.<route>` / `<node>.done` + `not`/`and`/`or`/括号）。
+守卫为假的节点记为 `not_executed(when_false)` 并**不写任何输出**，因此消费它的必需端口要么声明为
+可选、要么自己也加守卫——`check` 期就会拦住，不会拖到运行时。
+`examples/constraint-dropped.yaml` 是"合流丢约束"的反面样本：`check` 只警告，`may-dispatch` 拒绝。
 
 ## 测试
 

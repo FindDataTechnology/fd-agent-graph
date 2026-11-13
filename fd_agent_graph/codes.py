@@ -20,6 +20,16 @@ DUPLICATE_NODE = "graph.node.duplicate-id"  # error
 UNKNOWN_NODE = "graph.edge.unknown-node"  # error
 UNKNOWN_CARRY = "graph.edge.unknown-port"  # error
 UNKNOWN_ROUTE_FIELD = "graph.edge.unknown-route-field"  # error
+GUARD_INVALID_EDGE = "graph.edge.guard-invalid"  # error
+GUARD_INVALID_NODE = "graph.node.guard-invalid"  # error
+ROUTE_INVALID = "graph.node.route-invalid"  # error
+ROUTE_WITHOUT_CONDITION = "graph.node.route-without-condition"  # warning
+SELECT_INVALID = "graph.node.select-invalid"  # error
+SELECT_WITHOUT_ROUTES = "graph.node.select-without-routes"  # error
+SELECT_UNSATISFIABLE = "graph.node.select-unsatisfiable"  # error
+GUARD_INCOMPLETE = "graph.check.guard-incomplete"  # error
+GUARD_ATOM_OUTSIDE_DEPS = "graph.check.guard-atom-outside-deps"  # error
+INPUT_FROM_UNEXECUTED = "graph.check.input-from-unexecuted"  # error
 UNRESOLVED_SUBGRAPH = "graph.node.unresolved-subgraph"  # error
 MALFORMED_PORTS = "graph.node.malformed-ports"  # error
 VALUE_UNCONSUMED = "graph.edge.value-unconsumed"  # warning
@@ -69,6 +79,10 @@ HOST_REASONING_DRIFT = "binding.host.reasoning-drift"  # error
 #: authority. A definition carrying authority values is rejected by the host, so
 #: this is an error, not a drift warning.
 HOST_MEMORY_LOCATION_INVALID = "binding.host.memory-location-invalid"  # error
+CONSTRAINT_DROPPED_AT_DISPATCH = "graph.dispatch.constraint-dropped"  # error
+CHARTER_UNKNOWN_AGENT = "binding.charter.unknown-agent"  # error
+CHARTER_EXPANDS_TOOLS = "binding.charter.expands-tools"  # error
+CHARTER_EXTENDS_DEADLINE = "binding.charter.extends-deadline"  # error
 CONSTRAINT_NOT_CONSUMED = "binding.template.constraint-not-consumed"  # error
 
 SEVERITIES: dict[str, str] = {
@@ -99,6 +113,16 @@ SEVERITIES: dict[str, str] = {
     UNBOUNDED_CYCLE: SEVERITY_ERROR,
     UNVERIFIED_WRITE: SEVERITY_WARNING,
     CONSTRAINT_DROPPED: SEVERITY_WARNING,
+    GUARD_INVALID_EDGE: SEVERITY_ERROR,
+    GUARD_INVALID_NODE: SEVERITY_ERROR,
+    ROUTE_INVALID: SEVERITY_ERROR,
+    ROUTE_WITHOUT_CONDITION: SEVERITY_WARNING,
+    SELECT_INVALID: SEVERITY_ERROR,
+    SELECT_WITHOUT_ROUTES: SEVERITY_ERROR,
+    SELECT_UNSATISFIABLE: SEVERITY_ERROR,
+    GUARD_INCOMPLETE: SEVERITY_ERROR,
+    GUARD_ATOM_OUTSIDE_DEPS: SEVERITY_ERROR,
+    INPUT_FROM_UNEXECUTED: SEVERITY_ERROR,
     CONCURRENCY_ABOVE_WIDTH: SEVERITY_ERROR,
     CONCURRENCY_ABOVE_CEILING: SEVERITY_WARNING,
     NO_PARALLEL_GAIN: SEVERITY_WARNING,
@@ -122,6 +146,10 @@ SEVERITIES: dict[str, str] = {
     HOST_MODEL_DRIFT: SEVERITY_ERROR,
     HOST_REASONING_DRIFT: SEVERITY_ERROR,
     HOST_MEMORY_LOCATION_INVALID: SEVERITY_ERROR,
+    CONSTRAINT_DROPPED_AT_DISPATCH: SEVERITY_ERROR,
+    CHARTER_UNKNOWN_AGENT: SEVERITY_ERROR,
+    CHARTER_EXPANDS_TOOLS: SEVERITY_ERROR,
+    CHARTER_EXTENDS_DEADLINE: SEVERITY_ERROR,
     CONSTRAINT_NOT_CONSUMED: SEVERITY_ERROR,
 }
 

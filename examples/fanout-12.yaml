@@ -6,6 +6,8 @@ edges:
     to: w01
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w01
     to: join
   - carries:
@@ -15,6 +17,8 @@ edges:
     to: w02
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w02
     to: join
   - carries:
@@ -24,6 +28,8 @@ edges:
     to: w03
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w03
     to: join
   - carries:
@@ -33,6 +39,8 @@ edges:
     to: w04
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w04
     to: join
   - carries:
@@ -42,6 +50,8 @@ edges:
     to: w05
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w05
     to: join
   - carries:
@@ -51,6 +61,8 @@ edges:
     to: w06
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w06
     to: join
   - carries:
@@ -60,6 +72,8 @@ edges:
     to: w07
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w07
     to: join
   - carries:
@@ -69,6 +83,8 @@ edges:
     to: w08
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w08
     to: join
   - carries:
@@ -78,6 +94,8 @@ edges:
     to: w09
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w09
     to: join
   - carries:
@@ -87,6 +105,8 @@ edges:
     to: w10
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w10
     to: join
   - carries:
@@ -96,6 +116,8 @@ edges:
     to: w11
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w11
     to: join
   - carries:
@@ -105,6 +127,8 @@ edges:
     to: w12
   - carries:
       - patch
+      - file_ownership
+      - review_note
     from: w12
     to: join
   - carries:
@@ -420,6 +444,10 @@ nodes:
     idempotent: true
     inputs:
       patch:
+        type: string
+      file_ownership:
+        type: string
+      review_note:
         type: string
     kind: join
     outputs:

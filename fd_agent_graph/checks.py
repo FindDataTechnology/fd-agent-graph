@@ -16,27 +16,25 @@ non-empty fix hint.
 
 from __future__ import annotations
 
-import re
 from collections import Counter, deque
 
 from . import codes
+from .guards import referenced_nodes
 from .model import (
     CHECKPOINT_NODE,
     CHECKPOINT_POLICIES,
     EFFECT_ORDER,
     EFFECT_RANK,
     KINDS,
+    RESERVED_ROUTE,
+    ROUTE_NAME_RE,
+    SELECT_ONE,
+    SELECT_POLICIES,
     Finding,
     Graph,
     Node,
     effect_strength,
     finding,
-)
-
-# Tokens that may appear in a routing condition without naming an output.
-_ROUTE_TOKEN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-_ROUTE_LITERALS = frozenset(
-    {"true", "false", "null", "None", "and", "or", "not", "in", "is", "if", "else", "len"}
 )
 
 
@@ -139,8 +137,30 @@ def structural_findings(graph: Graph) -> list[Finding]:
     for node in by_id.values():
         _check_node_structure(graph, node, out)
 
+    _check_route_declarations(graph, by_id, out)
     _check_edges(graph, by_id, out)
     _check_endpoints(graph, by_id, out)
+    for node in by_id.values():
+        if node.when_error:
+            _emit(
+                out,
+                codes.GUARD_INVALID_NODE,
+                f"node:{node.id}",
+                f"node {node.id!r} has a guard outside the closed grammar: {node.when_error}",
+                "write the guard as `<node>.<route>` atoms combined with not/and/or "
+                "and parentheses, e.g. `review.approved or review.done`",
+            )
+    for edge in graph.edges:
+        if edge.when_error:
+            _emit(
+                out,
+                codes.GUARD_INVALID_EDGE,
+                f"edge:{edge.source}->{edge.target}",
+                f"edge {edge.source} -> {edge.target} has a guard outside the closed "
+                f"grammar: {edge.when_error}",
+                "write the guard as `<node>.<route>` atoms combined with not/and/or "
+                "and parentheses, e.g. `review.approved and not budget.done`",
+            )
     out.extend(_malformed_findings(graph))
     out.extend(_unconsumed_findings(graph))
 
@@ -242,15 +262,229 @@ def _check_node_structure(graph: Graph, node: Node, out: list[Finding]) -> None:
         )
 
 
-def _route_offenders(condition: str, outputs: set[str]) -> list[str]:
-    offenders: list[str] = []
-    for token in _ROUTE_TOKEN_RE.findall(condition):
-        if token in _ROUTE_LITERALS or token.isdigit() or token in outputs:
-            continue
-        if token not in offenders:
-            offenders.append(token)
-    return offenders
+def _decision_scope(graph: Graph, node_id: str) -> set[str]:
+    """Node ids an atom may name when the guard sits on `node_id` or leaves it.
 
+    A guard may speak about the node it is attached to (an edge `review -> ship`
+    routs on `review.approved`) and about anything that decided before it. It may
+    not speak about a node that has not run yet: that atom could never be true.
+    """
+    scope = set(graph.incoming_sources(node_id))
+    scope.add(node_id)
+    return scope
+
+
+def _check_guard_atoms(
+    guard,
+    *,
+    allowed: set[str],
+    decisions: set[str],
+    by_id: dict[str, Node],
+    location: str,
+    out: list[Finding],
+) -> None:
+    for atom in guard.atoms():
+        node_id = atom.node
+        if node_id not in allowed:
+            _emit(
+                out,
+                codes.GUARD_ATOM_OUTSIDE_DEPS,
+                location,
+                f"guard atom {atom.to_source()!r} names {node_id!r}, which is not among "
+                f"the dependencies that decide before this point",
+                "name a decision node in this element's own upstream dependencies "
+                f"(available: {', '.join(sorted(allowed)) or '(none)'})",
+            )
+            continue
+        if node_id not in decisions:
+            _emit(
+                out,
+                codes.UNKNOWN_ROUTE_FIELD,
+                location,
+                f"guard atom {atom.to_source()!r} names {node_id!r}, which declares no "
+                f"routes, so it never settles a route",
+                f"declare `routes` on {node_id!r}, or guard on a node that does",
+            )
+            continue
+        if atom.route is None:
+            continue
+        declared = by_id[node_id].route_names()
+        if atom.route not in declared:
+            _emit(
+                out,
+                codes.UNKNOWN_ROUTE_FIELD,
+                location,
+                f"guard atom {atom.to_source()!r} names a route {node_id!r} does not "
+                f"declare",
+                f"use one of the routes {node_id!r} declares ({', '.join(declared)}), "
+                f"or `{node_id}.done` where the route does not matter",
+            )
+
+
+def _check_route_declarations(graph: Graph, by_id: dict[str, Node], out: list[Finding]) -> None:
+    """Route and select declarations, before anything is asked to route on them."""
+    for node in by_id.values():
+        location = f"node:{node.id}"
+
+        if node.select is not None and not node.routes:
+            _emit(
+                out,
+                codes.SELECT_WITHOUT_ROUTES,
+                location,
+                f"node {node.id!r} declares select={node.select!r} but no routes",
+                "declare `routes` as a name -> condition mapping, or remove `select`",
+            )
+            continue
+
+        if node.select is not None and node.select not in SELECT_POLICIES:
+            _emit(
+                out,
+                codes.SELECT_INVALID,
+                location,
+                f"node {node.id!r} declares select={node.select!r}, which is not "
+                f"one of {', '.join(SELECT_POLICIES)}",
+                f"use select: {SELECT_ONE} (exactly one route) or select: many "
+                "(any number, including none)",
+            )
+
+        seen: dict[str, str] = {}
+        for name, condition in node.routes:
+            if not ROUTE_NAME_RE.match(name):
+                _emit(
+                    out,
+                    codes.ROUTE_INVALID,
+                    location,
+                    f"route name {name!r} is not in the node-id charset",
+                    "use letters, digits, '_' and '-' only",
+                )
+            elif name.lower() == RESERVED_ROUTE:
+                _emit(
+                    out,
+                    codes.ROUTE_INVALID,
+                    location,
+                    f"route name {name!r} is reserved: `{name}.done` is a guard atom",
+                    f"rename the route (e.g. `{name}d`), because 'done' means "
+                    "'the node settled' in the guard grammar",
+                )
+            else:
+                folded = name.casefold()
+                if folded in seen:
+                    _emit(
+                        out,
+                        codes.ROUTE_INVALID,
+                        location,
+                        f"route {name!r} differs from {seen[folded]!r} only in letter "
+                        "case, so the two cannot be told apart",
+                        "rename one of them; route names are case-insensitive",
+                    )
+                seen.setdefault(folded, name)
+
+            if not condition:
+                _emit(
+                    out,
+                    codes.ROUTE_WITHOUT_CONDITION,
+                    location,
+                    f"route {name!r} declares no condition, so no judgement can be "
+                    "made about when it applies",
+                    "state, in plain words, under which conditions the answer selects "
+                    f"{name!r}",
+                )
+
+        if node.select == SELECT_ONE and len(node.routes) < 2:
+            _emit(
+                out,
+                codes.SELECT_UNSATISFIABLE,
+                location,
+                f"node {node.id!r} declares select: one with {len(node.routes)} route(s), "
+                "so there is nothing to choose between",
+                "declare at least two routes, or drop `select` and use plain edges",
+            )
+
+
+def _check_inputs_from_unexecuted(graph: Graph, by_id: dict[str, Node], out: list[Finding]) -> None:
+    """A required port produced only behind a guard, consumed by an unguarded node.
+
+    The producer may settle not_executed and write nothing, so the consumer's
+    required input is unsatisfiable on that path. Caught here, at check time,
+    rather than at run time: a run that discovers it has already spent the
+    upstream work.
+    """
+    for node in by_id.values():
+        for port in node.inputs:
+            if not port.required:
+                continue
+            carriers = [e for e in graph.incoming(node.id) if port.name in e.carries]
+            if not carriers:
+                continue
+
+            gating: set[str] = set()
+            every_producer_gated = True
+            for edge in carriers:
+                producer = by_id.get(edge.source)
+                if producer is None:
+                    continue
+                gate = None
+                if edge.when is not None:
+                    gate = edge.when
+                elif producer.when is not None:
+                    gate = producer.when
+                if gate is None:
+                    every_producer_gated = False
+                    break
+                gating.update(referenced_nodes(gate))
+            if not every_producer_gated or not gating:
+                continue
+
+            named = set(referenced_nodes(node.when)) if node.when is not None else set()
+            missing = sorted(gating - named)
+            if not missing:
+                continue
+            _emit(
+                out,
+                codes.INPUT_FROM_UNEXECUTED,
+                f"node:{node.id}",
+                f"node {node.id!r} requires input {port.name!r}, produced only behind "
+                f"the guard on {', '.join(missing)}, and its own guard does not cover "
+                "that branch, so the input may never exist",
+                f"either declare input {port.name!r} as optional on {node.id!r}, or add "
+                f"`{missing[0]}.<route>` / `{missing[0]}.done` to its guard",
+            )
+
+
+def _check_guard_completeness(graph: Graph, by_id: dict[str, Node], out: list[Finding]) -> None:
+    """A node guarded on one decision while depending on another loses the second.
+
+    This is the graph-level form of the fan-in defect: a constraint that exists at
+    the branch and is not named at the merge is silently dropped there.
+    """
+    decisions = {node.id for node in graph.nodes if node.is_decision}
+    for node in by_id.values():
+        preds = graph.incoming_sources(node.id)
+        if node.when is not None:
+            _check_guard_atoms(
+                node.when,
+                allowed=set(preds),
+                decisions=decisions,
+                by_id=by_id,
+                location=f"node:{node.id}",
+                out=out,
+            )
+        gated = [p for p in preds if p in decisions]
+        if not gated:
+            continue
+        named = set(referenced_nodes(node.when)) if node.when is not None else set()
+        for decision in sorted(gated):
+            if decision in named:
+                continue
+            _emit(
+                out,
+                codes.GUARD_INCOMPLETE,
+                f"node:{node.id}",
+                f"node {node.id!r} depends on decision node {decision!r} but its guard "
+                f"does not name it, so that decision's constraint is dropped here",
+                f"add `{decision}.<route>` (or `{decision}.done` where the route does "
+                f"not matter) to the guard of {node.id!r}",
+            )
 
 def _check_edges(graph: Graph, by_id: dict[str, Node], out: list[Finding]) -> None:
     known = set(by_id)
@@ -289,18 +523,25 @@ def _check_edges(graph: Graph, by_id: dict[str, Node], out: list[Finding]) -> No
                 "them across this edge",
             )
 
-        if edge.when:
-            offenders = _route_offenders(edge.when, outputs)
-            if offenders:
-                _emit(
-                    out,
-                    codes.UNKNOWN_ROUTE_FIELD,
-                    location,
-                    f"edge {edge.source} -> {edge.target} routes on unknown field(s) "
-                    f"{', '.join(offenders)} in condition {edge.when!r}",
-                    f"route on an output of {edge.source!r} instead; declared outputs: "
-                    f"{', '.join(sorted(outputs)) or '(none)'}",
-                )
+        if edge.when_error:
+            _emit(
+                out,
+                codes.GUARD_INVALID_EDGE,
+                location,
+                f"edge {edge.source} -> {edge.target} has a guard outside the closed "
+                f"grammar: {edge.when_error}",
+                "write the guard as `<node>.<route>` atoms combined with not/and/or "
+                "and parentheses, e.g. `review.approved and not budget.done`",
+            )
+        elif edge.when is not None:
+            _check_guard_atoms(
+                edge.when,
+                allowed=_decision_scope(graph, edge.source),
+                decisions={n.id for n in graph.nodes if n.is_decision},
+                by_id=by_id,
+                location=location,
+                out=out,
+            )
 
 
 def _check_endpoints(graph: Graph, by_id: dict[str, Node], out: list[Finding]) -> None:
@@ -336,6 +577,9 @@ def static_findings(graph: Graph) -> list[Finding]:
         _check_inputs(node, carried_into.get(node.id, set()), graph_inputs, out)
         _check_declared_effects(node, out)
         _check_retry(node, out)
+
+    _check_guard_completeness(graph, by_id, out)
+    _check_inputs_from_unexecuted(graph, by_id, out)
 
     for node_id, path in _unguarded_money_paths(graph, by_id).items():
         spend = " -> ".join(path)

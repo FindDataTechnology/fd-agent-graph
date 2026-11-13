@@ -271,13 +271,18 @@ class DiffTests(unittest.TestCase):
         self.assertEqual(result.new_findings, ())
 
     def test_diff_reports_a_new_convergence(self) -> None:
+        # `constraint-dropped.yaml` is the fixture that keeps the defect: the
+        # reference example (fanout-12) consumes its workers' constraints and is
+        # dispatchable, so it must not be the thing this test measures.
         before = load_graph(EXAMPLES / "linear.yaml")
-        after = load_graph(EXAMPLES / "fanout-12.yaml")
+        after = load_graph(EXAMPLES / "constraint-dropped.yaml")
         result = topology_diff(before, after)
         self.assertIn("w01", result.added_nodes)
         self.assertIn("join", result.added_nodes)
         self.assertIn("width", result.metrics)
-        self.assertTrue(any(f.code == "graph.topology.constraint-dropped" for f in result.new_findings))
+        self.assertTrue(
+            any(f.code == "graph.topology.constraint-dropped" for f in result.new_findings)
+        )
 
 
 class InitTests(unittest.TestCase):

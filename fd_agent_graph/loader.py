@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from . import yamlmini
+from .guards import GuardSyntaxError, parse_guard
 from .model import (
     CHECKPOINT_NODE,
     CHECKPOINT_POLICIES,
@@ -216,6 +217,9 @@ def _parse_node(raw: object, where: str, malformed: list | None = None) -> Node:
         idempotent = None
 
     subgraph = raw.get("subgraph")
+    select = raw.get("select")
+    when_raw = raw.get("when", raw.get("route"))
+    when_guard, when_source, when_error = _parse_guard_value(when_raw)
     return Node(
         id=str(node_id),
         kind=kind if kind in KINDS else kind,  # unknown kinds reported later
@@ -229,7 +233,56 @@ def _parse_node(raw: object, where: str, malformed: list | None = None) -> Node:
         tools=_parse_tools(raw.get("tools")),
         subgraph=str(subgraph) if subgraph else None,
         description=str(raw.get("description", "")),
+        routes=_parse_routes(raw.get("routes")),
+        select=str(select).strip() if select is not None else None,
+        when=when_guard,
+        when_source=when_source,
+        when_error=when_error,
     )
+
+
+def _parse_routes(raw: object) -> tuple[tuple[str, str], ...]:
+    """Route declarations, from either a mapping or a list of entries.
+
+    A route that is not a `name: condition` pair is kept as `name: ""` rather
+    than dropped: the checker then reports the missing condition, which names
+    the route, instead of the node looking as if it never declared it.
+    """
+    if raw is None:
+        return ()
+    pairs: list[tuple[str, str]] = []
+    if isinstance(raw, dict):
+        for name, condition in raw.items():
+            pairs.append((str(name), "" if condition is None else str(condition).strip()))
+        return tuple(pairs)
+    if isinstance(raw, (list, tuple)):
+        for item in raw:
+            if isinstance(item, dict):
+                name = item.get("name", item.get("route"))
+                condition = item.get("condition", item.get("when", ""))
+                if name is None:
+                    continue
+                pairs.append((str(name), "" if condition is None else str(condition).strip()))
+            else:
+                pairs.append((str(item), ""))
+        return tuple(pairs)
+    return ((str(raw), ""),)
+
+
+def _parse_guard_value(raw: object) -> tuple[object, str | None, str | None]:
+    """Parse a guard without making the file unreadable when it is malformed.
+
+    Returns `(guard, source, error)`. A malformed guard keeps its source and its
+    error so `checks` can report it as a finding with a location; raising here
+    would turn one bad condition into exit 2 and hide every other problem.
+    """
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return None, None, None
+    source = str(raw).strip()
+    try:
+        return parse_guard(source), source, None
+    except GuardSyntaxError as exc:
+        return None, source, str(exc)
 
 
 def _parse_edge(raw: object, where: str) -> Edge:
@@ -243,11 +296,14 @@ def _parse_edge(raw: object, where: str) -> Edge:
     if isinstance(carries, str):
         carries = [carries]
     when = raw.get("when", raw.get("route"))
+    when_guard, when_source, when_error = _parse_guard_value(when)
     return Edge(
         source=str(source),
         target=str(target),
         carries=tuple(sorted(str(c) for c in carries)),
-        when=str(when) if when else None,
+        when=when_guard,
+        when_source=when_source,
+        when_error=when_error,
     )
 
 
@@ -412,6 +468,9 @@ def graph_to_dict(graph: Graph) -> dict:
                 or None,
                 "subgraph": node.subgraph,
                 "description": node.description or None,
+                "routes": dict(node.routes) or None,
+                "select": node.select,
+                "when": node.when_source,
             }.items()
             if v is not None
         }
@@ -424,7 +483,7 @@ def graph_to_dict(graph: Graph) -> dict:
                 "from": edge.source,
                 "to": edge.target,
                 "carries": list(edge.carries) or None,
-                "when": edge.when,
+                "when": edge.when_source,
             }.items()
             if v is not None
         }
