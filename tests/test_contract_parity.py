@@ -21,13 +21,11 @@ from pathlib import Path
 from fd_agent_graph.loader import graph_from_dict, graph_to_dict
 from fd_agent_graph.model import Edge, Node
 
-DESIGN = (
-    Path(__file__).resolve().parent.parent.parent
-    / "openspec"
-    / "changes"
-    / "add-graph-conditional-dispatch"
-    / "design.md"
-)
+#: The table lives in the package, not in the archived change: archive directories
+#: carry a date in their name, and a test that reads one is a test that breaks at
+#: archive time. `docs/contract-parity.md` was copied from the change's design.md
+#: when the change was archived (2026-11-14) and is now the authority.
+DESIGN = Path(__file__).resolve().parent.parent / "docs" / "contract-parity.md"
 
 #: Frozen: the contract fields the table must cover. Adding a field to the
 #: external contract means adding a row here, and this test is what makes that
@@ -78,14 +76,14 @@ def _field_names(cell: str) -> list[str]:
 
 def table_rows() -> dict[str, str]:
     text = DESIGN.read_text(encoding="utf-8")
-    start = text.index("## Raven 字段对照")
-    end = text.index("\n## ", start + 10)
+    start = text.index("| 外部契约字段 |")
+    end = text.index("\n## ", start)
     rows: dict[str, str] = {}
     for line in text[start:end].splitlines():
         if not line.startswith("|") or set(line.strip()) <= set("|-: "):
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) != 3 or cells[0] == "Raven 字段":
+        if len(cells) != 3 or cells[0] == "外部契约字段":
             continue
         for field in _field_names(cells[0]):
             rows[field] = cells[2]
@@ -94,7 +92,7 @@ def table_rows() -> dict[str, str]:
 
 class TableTest(unittest.TestCase):
     def test_the_table_covers_every_contract_field(self):
-        self.assertTrue(DESIGN.exists(), f"design.md not found at {DESIGN}")
+        self.assertTrue(DESIGN.exists(), f"parity table not found at {DESIGN}")
         rows = table_rows()
         self.assertEqual(set(rows), EXPECTED_FIELDS)
 
