@@ -45,9 +45,17 @@ def frontmatter_of(path: Path) -> dict:
 def main() -> int:
     texts: dict[str, str] = {}
     problems: list[str] = []
+    skipped: list[str] = []
 
     for label, path in COPIES.items():
         if not path.exists():
+            # The plugin copy lives in the workspace beside the package, not in the
+            # package. A fresh clone legitimately has no such sibling; a workspace
+            # that has the plugin tree but lost the file is a real drift.
+            host = path.parents[2] if len(path.parents) > 2 else None
+            if host is not None and not host.exists():
+                skipped.append(f"{label}: {host} not present")
+                continue
             problems.append(f"{label}: missing ({path})")
             continue
         if label == "manifest content":
@@ -59,6 +67,9 @@ def main() -> int:
             texts[label] = entry["content"]
         else:
             texts[label] = body_of(path)
+
+    for item in skipped:
+        print(f"skip {item}")
 
     if problems:
         for item in problems:
@@ -73,6 +84,9 @@ def main() -> int:
                 f"{label} differs from {reference_label} "
                 f"({len(text)} vs {len(reference)} chars)"
             )
+
+    for item in skipped:
+        print(f"skip {item}")
 
     if problems:
         for item in problems:
@@ -96,6 +110,9 @@ def main() -> int:
                 f"SKILL.md frontmatter ({len(expected)} chars) — the platform re-renders "
                 f"SKILL.md from the manifest"
             )
+
+    for item in skipped:
+        print(f"skip {item}")
 
     if problems:
         for item in problems:

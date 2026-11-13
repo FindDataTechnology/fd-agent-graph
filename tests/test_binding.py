@@ -30,6 +30,11 @@ from fd_agent_graph.model import GraphError, TypeRef
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
 
+#: The workspace this package is developed inside. Its `.mcp.json` declares the MCP
+#: servers the shipped rosters bind; a standalone clone has no such file, and the
+#: environment-dependent tests skip rather than fail there.
+_WORKSPACE_MARKER = Path(__file__).resolve().parents[2] / ".mcp.json"
+
 
 def _env(tmp: str, *, skills: dict[str, list[str]] | None = None, servers: list[str] | None = None):
     """Build an environment from scratch so tests never read the host's config."""
@@ -305,7 +310,12 @@ def _env_free():
 
 class CliTests(unittest.TestCase):
     def test_examples_validate_clean_on_this_machine(self) -> None:
-        # The shipped roster must resolve against the real workspace.
+        # The shipped roster must resolve against the real workspace: the MCP
+        # servers and skills it names are declared by the workspace's own
+        # `.mcp.json` / `.zcode/config.json`, not by this package. A clone has
+        # neither, so the premise is absent rather than the code being wrong.
+        if not _WORKSPACE_MARKER.exists():
+            self.skipTest("workspace not present (no .mcp.json beside the package)")
         rc = main(["bind", "--manifest", str(EXAMPLES / "agents.yaml")])
         self.assertEqual(rc, 0)
 
@@ -1306,7 +1316,18 @@ class JsonFlagUniformityTests(unittest.TestCase):
                 timeout=300,
                 env={"PYTHONPATH": str(pkg), "PATH": "/usr/bin:/bin"},
             )
-            self.assertEqual(out.returncode, 0, f"{argv} rejected --json: {out.stderr[-200:]}")
+            # What this case asks is whether `--json` is *accepted*: argparse
+            # rejects an unknown flag with rc 2, while a business failure is rc 1
+            # and still emits the JSON report. Asserting rc == 0 here would make
+            # the test depend on the machine's MCP registry instead of on the flag.
+            workspace = _WORKSPACE_MARKER.exists()
+            self.assertNotEqual(
+                out.returncode, 2, f"{argv} rejected --json: {out.stderr[-200:]}"
+            )
+            if workspace:
+                self.assertEqual(
+                    out.returncode, 0, f"{argv} failed: {out.stderr[-200:]}"
+                )
             self.assertTrue(
                 out.stdout.lstrip().startswith(("{", "[")),
                 f"{argv} --json did not emit JSON",

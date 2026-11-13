@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import re
+import fnmatch
 import subprocess
 import sys
 from pathlib import Path
@@ -27,6 +28,34 @@ DOCS = (PKG / "README.md", PKG / "docs/HANDOFF.md", PKG / "docs/host-binding-gap
 CLI_RE = re.compile(r"python3 -m fd_agent_graph\.cli ([a-z-]+)")
 TEST_COUNT_RE = re.compile(r"#\s*(\d+)\s*单测")
 PATH_RE = re.compile(r"`(?:fd-agent-graph/)?((?:examples|roster|scripts|pack|docs|build)/[A-Za-z0-9._/-]+)`")
+
+
+def _gitignored(rel: str) -> bool:
+    """True when `.gitignore` says this path is runtime output.
+
+    The docs reference `build/dispatch-hook.log` as an example of a runtime log,
+    and `.gitignore` carries `build/*.log`. Treating that reference as a missing
+    source file made this gate red for anyone who had not run the hook on their own
+    machine - and a gate that is red out of the box is a gate people learn to skip.
+    """
+    ignore = PKG / ".gitignore"
+    if not ignore.exists():
+        return False
+    rel_parts = rel.split("/")
+    for line in ignore.read_text(encoding="utf-8").splitlines():
+        pattern = line.strip()
+        if not pattern or pattern.startswith("#"):
+            continue
+        if pattern.endswith("/"):
+            if pattern.rstrip("/") in rel_parts:
+                return True
+        elif "/" in pattern:
+            head, _, tail = pattern.partition("/")
+            if rel_parts[0] == head and fnmatch.fnmatch("/".join(rel_parts[1:]), tail):
+                return True
+        elif fnmatch.fnmatch(rel_parts[-1], pattern):
+            return True
+    return False
 
 # Read-only commands safe to execute. Anything that writes or needs a live host is
 # checked statically instead of run.
@@ -55,6 +84,7 @@ def known_subcommands() -> set[str]:
 
 def main() -> int:
     problems: list[str] = []
+    tolerated: list[str] = []
     subcommands = known_subcommands()
 
     for doc in DOCS:
@@ -77,7 +107,10 @@ def main() -> int:
                 if (base / rel).exists():
                     break
             else:
-                problems.append(f"{doc.name}: references missing path `{rel}`")
+                if _gitignored(rel):
+                    tolerated.append(f"{doc.name}: `{rel}` (gitignored runtime artifact)")
+                else:
+                    problems.append(f"{doc.name}: references missing path `{rel}`")
 
     # run the safe documented commands
     for argv, expected in SAFE_RUNS:
@@ -136,6 +169,8 @@ def main() -> int:
         f"ok  docs execute: {len(subcommands)} subcommands, "
         f"{len(SAFE_RUNS)} documented commands run, paths resolve, test count matches"
     )
+    for item in tolerated:
+        print(f"note gitignored, not required: {item}")
     return 0
 
 
