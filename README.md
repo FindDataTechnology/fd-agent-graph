@@ -55,6 +55,12 @@ python3 -m fd_agent_graph.cli codes                                  # 违规码
 可选、要么自己也加守卫——`check` 期就会拦住，不会拖到运行时。
 `examples/constraint-dropped.yaml` 是"合流丢约束"的反面样本：`check` 只警告，`may-dispatch` 拒绝。
 
+**这次收紧对既有图的影响是可核对的**：用改动前后的两份代码，对 `build/` 里 17 张历史图各跑一遍
+`may-dispatch --concurrency 4`，**只有 1 张的裁决变了**——`build/v1-fanout-12-drops.yaml`
+（PERMIT → REFUSE，24 处 `graph.dispatch.constraint-dropped`，与文件名里的 drops 一致）；其余 16 张
+逐条不变（那些 `unknown-effect` 是生成骨架留给人的占位符，改动前就拒）。复核方法：
+`git worktree add /tmp/pre 0175b85`，在同一批图上各跑一次再逐行 diff。
+
 ## 测试
 
 ```bash
