@@ -287,8 +287,13 @@ class DiffTests(unittest.TestCase):
 
 class InitTests(unittest.TestCase):
     def test_skeleton_from_real_tasks_is_parseable_and_unconfirmed(self) -> None:
-        tasks = Path("/Users/chengsishi/finddata/openspec/changes/add-hotel-vertical/tasks.md")
-        if not tasks.exists():
+        change = "openspec/changes/add-hotel-vertical/tasks.md"
+        tasks = None
+        for candidate in Path(__file__).resolve().parents:
+            if (candidate / change).exists():
+                tasks = candidate / change
+                break
+        if tasks is None:
             self.skipTest("workspace change not present")
         with TemporaryDirectory() as tmp:
             out = Path(tmp) / "skeleton.yaml"

@@ -21,7 +21,23 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-DEFAULT_CODE_GRAPH = Path("/Users/chengsishi/finddata/attic/fd-code-graph")
+from .probe import workspace_containing
+
+def _default_code_graph() -> Path:
+    """The sibling `attic/fd-code-graph` checkout, found relative to this package.
+
+    This was a literal home directory, which only ever resolved on the machine it
+    was written on. Relative-to-package keeps the same answer there and degrades to
+    "index unavailable" everywhere else, which is a state this module already
+    handles explicitly. FD_CODE_GRAPH_DIR overrides both.
+    """
+    override = os.environ.get("FD_CODE_GRAPH_DIR")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parents[2] / "attic" / "fd-code-graph"
+
+
+DEFAULT_CODE_GRAPH = _default_code_graph()
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,9 +131,9 @@ def _workspace_of(tasks_md: Path) -> Path:
     ancestor is `openspec`, not the workspace. Look for the directory that actually
     contains the `openspec` folder instead.
     """
-    for candidate in Path(tasks_md).resolve().parents:
-        if (candidate / "openspec").is_dir():
-            return candidate
+    found = workspace_containing(Path(tasks_md).resolve().parent)
+    if found is not None:
+        return found
     return Path(tasks_md).resolve().parents[-1]
 
 

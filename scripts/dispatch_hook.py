@@ -57,11 +57,35 @@ import subprocess
 import sys
 from pathlib import Path
 
-PKG = Path("/Users/chengsishi/finddata/fd-agent-graph")
+def _package() -> Path:
+    """Where this package lives. Never a literal home directory.
+
+    This used to be `Path("/Users/chengsishi/...")`, which is the author's laptop and
+    nothing else. On any other machine every check below raised into the
+    "never block dispatch" handler, so the hook exited 0 having done nothing and
+    having logged nothing - indistinguishable from "checked and clean". CI found it
+    the first time this package ran anywhere else: four governance tests and the
+    roster test went from `deny` to a silent pass.
+    """
+    override = os.environ.get("FD_AGENT_GRAPH_PKG")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parents[1]
+
+
+PKG = _package()
 LOG = Path(os.environ.get("FD_AGENT_GRAPH_LOG", PKG / "build" / "dispatch-hook.log"))
 # Overridable so the block path can be exercised without breaking the real roster.
 ROSTER = Path(os.environ.get("FD_AGENT_GRAPH_ROSTER", PKG / "roster" / "finddata-coding.yaml"))
 CREW_ROLES = ("planner", "explorer", "implementer", "merger", "verifier")
+
+#: The host's MCP configs and skills roots, overridable so the gate's verdict does
+#: not depend on which machine it happens to sit on. Without these the shipped
+#: roster - which names this workspace's servers - reports `binding.mcp.missing`
+#: for every one of them on any machine that does not have them, and the hook
+#: denies a crew dispatch for a reason that has nothing to do with the dispatch.
+MCP_CONFIGS = [item for item in os.environ.get("FD_AGENT_GRAPH_MCP_CONFIG", "").split(os.pathsep) if item]
+SKILLS_ROOTS = [item for item in os.environ.get("FD_AGENT_GRAPH_SKILLS_ROOT", "").split(os.pathsep) if item]
 
 #: Where to look for a run ledger. Defaults to `<cwd>/.run/*/journal.jsonl`; set
 #: FD_RUN_DIR to govern a specific project instead.
@@ -82,17 +106,22 @@ def _mentions_crew(text: str) -> bool:
 
 def _bind_failures() -> list[str]:
     """Blocking findings from bind, or empty when the roster is usable."""
+    argv = [
+        sys.executable,
+        "-m",
+        "fd_agent_graph.cli",
+        "bind",
+        "--manifest",
+        str(ROSTER),
+        "--check-host",
+        "--json",
+    ]
+    for config in MCP_CONFIGS:
+        argv += ["--mcp-config", config]
+    for root in SKILLS_ROOTS:
+        argv += ["--skills-root", root]
     proc = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "fd_agent_graph.cli",
-            "bind",
-            "--manifest",
-            str(ROSTER),
-            "--check-host",
-            "--json",
-        ],
+        argv,
         cwd=str(PKG),
         capture_output=True,
         text=True,
@@ -191,13 +220,22 @@ def _log(decision: str, detail: str) -> None:
         LOG.parent.mkdir(parents=True, exist_ok=True)
         with open(LOG, "a", encoding="utf-8") as handle:
             handle.write(f"{decision}\t{detail}\n")
-    except Exception:
-        pass
+    except Exception as exc:
+        # Still not fatal - a hook that raises blocks dispatch - but not silent
+        # either. A log nobody can write is how "installed and clean" and "never
+        # ran" come to look the same.
+        print(f"warning: cannot write dispatch log {LOG}: {exc}", file=sys.stderr)
 
 
 def main() -> int:
+    # Two absences that look alike and are not: no package here means the hook is
+    # wired up somewhere the checker does not live (nothing to check); a package
+    # without its roster means the gate was configured and part of it is gone.
+    if not PKG.is_dir():
+        _log("skipped", f"package absent: {PKG}")
+        return 0
     if not ROSTER.exists():
-        _log("skipped", "roster missing")
+        _log("ungoverned", f"roster absent: {ROSTER}")
         return 0
     text = _payload()
     if not _mentions_crew(text):

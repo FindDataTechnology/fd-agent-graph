@@ -18,13 +18,23 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.host_fixture import HostFixture
+
 PKG = Path(__file__).resolve().parents[1]
 HOOK = PKG / "scripts" / "dispatch_hook.py"
+ROSTER = PKG / "roster" / "finddata-coding.yaml"
 MORNING = '{"prompt": "you are the implementer"}'
+
+#: A host the roster can actually be satisfied by. Without it these tests assert the
+#: developer's laptop: on a runner with no `~/.agents/skills` and no workspace
+#: `.mcp.json` the hook denies every crew dispatch as `binding.mcp.missing`, and
+#: `test_finished_run_denies` passes for entirely the wrong reason.
+HOST = HostFixture(ROSTER).__enter__()
 
 
 def run_hook(stdin_text: str, **env_extra: str) -> subprocess.CompletedProcess:
     env = {"PATH": "/usr/bin:/bin", "HOME": os.environ.get("HOME", "")}
+    env.update(HOST.env())
     env.update(env_extra)
     return subprocess.run(
         [sys.executable, str(HOOK)],

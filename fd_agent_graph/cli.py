@@ -28,6 +28,7 @@ from .gate import (
 from .binding import Charter, effective_faces, load_roster
 from .dispatch import DispatchRecord, default_record_path
 from .loader import graph_to_dict, load_graph
+from .probe import exists, is_dir, listdir as _listdir, workspace_containing
 from .runner import ExecutionError, PortRouteResolver
 from .runner import run as run_graph
 from .model import GraphError, SEVERITY_ERROR
@@ -654,15 +655,13 @@ def cmd_plan(args: argparse.Namespace) -> int:
 
     repos = [r.strip() for r in (args.repos or "").split(",") if r.strip()]
     if not repos:
-        workspace = tasks.resolve().parents[0]
-        for candidate in tasks.resolve().parents:
-            if (candidate / "openspec").is_dir():
-                workspace = candidate
-                break
+        workspace = workspace_containing(tasks.resolve().parent)
+        if workspace is None:
+            workspace = tasks.resolve().parents[0]
         repos = sorted(
             p.name
-            for p in workspace.iterdir()
-            if p.is_dir() and (p / "openspec").exists()
+            for p in _listdir(workspace)
+            if is_dir(p) and exists(p / "openspec")
         ) or []
     plan = plan_change(tasks, args.name or tasks.parent.name, args.workers, repos or None)
     payload = to_dict(plan)

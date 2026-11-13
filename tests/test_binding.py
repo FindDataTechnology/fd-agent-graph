@@ -7,6 +7,8 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+
+from tests.host_fixture import HostFixture
 from tempfile import TemporaryDirectory
 
 from fd_agent_graph import yamlmini
@@ -642,6 +644,10 @@ def has_errors_host(found) -> bool:
     return any(f.severity == "error" for f in found)
 
 
+ROSTER = Path(__file__).resolve().parents[1] / "roster" / "finddata-coding.yaml"
+HOST = HostFixture(ROSTER).__enter__()
+
+
 class DispatchHookTests(unittest.TestCase):
     """The hook has three behaviours worth pinning: pass, block, and never crash."""
 
@@ -656,6 +662,11 @@ class DispatchHookTests(unittest.TestCase):
             # Otherwise the tests append to the same log the liveness criterion
             # reads, and "did the hook fire?" becomes unanswerable.
             "FD_AGENT_GRAPH_LOG": f"/tmp/fd-agent-graph-hook-test-{self.id().replace('.', '_')}.log",
+            # A host the shipped roster can be satisfied by. Without it this class
+            # asserts the developer's machine: a runner has no skills root and no
+            # workspace `.mcp.json`, so every crew dispatch is denied for missing
+            # bindings and the "passes when clean" case can only pass by accident.
+            **HOST.env(),
         }
         if roster:
             env["FD_AGENT_GRAPH_ROSTER"] = roster
@@ -715,6 +726,69 @@ class DispatchHookTests(unittest.TestCase):
             '{"tool_input":{"subagent_type":"planner"}}', "/nonexistent/roster.yaml"
         )
         self.assertEqual(out.returncode, 0)
+
+    def test_the_hook_finds_this_package_without_a_hard_coded_path(self) -> None:
+        """The hook used to carry the author's home directory as its package root.
+
+        On any other machine that path does not exist, every check raised into the
+        "never block dispatch" handler, and the hook exited 0 having logged nothing -
+        the same output as a clean check. CI found it: four governance tests and the
+        roster test went from deny to a silent pass.
+        """
+        import subprocess as sp
+
+        code = (
+            "import importlib.util,sys;"
+            f"spec=importlib.util.spec_from_file_location('h',{str(self.SCRIPT)!r});"
+            "m=importlib.util.module_from_spec(spec);sys.modules['h']=m;"
+            "spec.loader.exec_module(m);"
+            "print(m.PKG);print((m.PKG/'roster'/'finddata-coding.yaml').exists())"
+        )
+        out = sp.run(
+            [sys.executable, "-c", code],
+            capture_output=True, text=True,
+            env={"PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "HOME": ""},
+            timeout=30,
+        )
+        lines = out.stdout.strip().splitlines()
+        self.assertEqual(lines[0], str(Path(__file__).resolve().parents[1]), out.stderr)
+        # Equality with `parents[1]` is the assertion that matters: it can only hold
+        # if the path is derived from this file. Asserting "not under a home
+        # directory" would be false on the author's own machine, where deriving it
+        # correctly lands under one.
+        self.assertEqual(lines[1], "True", "the package the hook resolves has its roster")
+
+    def test_absent_package_and_absent_roster_are_different_decisions(self) -> None:
+        """Not installed here vs. installed with a file missing must not read alike."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {
+                "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+                "FD_AGENT_GRAPH_PKG": "/nonexistent/package",
+                "FD_AGENT_GRAPH_LOG": f"{tmp}/absent.log",
+            }
+            absent = subprocess.run(
+                [sys.executable, str(self.SCRIPT)],
+                input='{"tool_input":{"subagent_type":"planner"}}',
+                capture_output=True, text=True, env=env, timeout=30,
+            )
+            self.assertEqual(absent.returncode, 0)
+            self.assertTrue(Path(f"{tmp}/absent.log").read_text().startswith("skipped"))
+
+            env["FD_AGENT_GRAPH_PKG"] = str(self.SCRIPT.parents[1])
+            env["FD_AGENT_GRAPH_ROSTER"] = "/nonexistent/roster.yaml"
+            env["FD_AGENT_GRAPH_LOG"] = f"{tmp}/ungoverned.log"
+            missing = subprocess.run(
+                [sys.executable, str(self.SCRIPT)],
+                input='{"tool_input":{"subagent_type":"planner"}}',
+                capture_output=True, text=True, env=env, timeout=30,
+            )
+            self.assertEqual(missing.returncode, 0)
+            self.assertTrue(
+                Path(f"{tmp}/ungoverned.log").read_text().startswith("ungoverned"),
+                "a missing roster is a gap in the gate, not a clean pass",
+            )
 
 
 class SkillCopyTests(unittest.TestCase):

@@ -515,6 +515,24 @@ FD_AGENT_DISPATCH_UNGOVERNED=1 -> 整段跳过
 
 `predicate_failed` 算可派发（失败待重试），`committed`/`abandoned` 不算。
 
+### 钩子绝不写死本机路径（2026-11-14，CI 第一次跑抓到的）
+
+`PKG` 曾经是 `Path("/Users/chengsishi/finddata/fd-agent-graph")`——作者的家目录，也就是
+**只有一台机器上成立**。换一台机器，每次检查都抛进"绝不因为检查器坏了而阻塞派发"那个
+`except`，于是钩子退出 0、日志一行不写：与"检查过且干净"的输出**逐字节相同**。CI 第一次跑
+就有五条用例从 `deny` 变成静默通过。
+
+现在的解析顺序是 `FD_AGENT_GRAPH_PKG` → `Path(__file__).resolve().parents[1]`，并且两种"缺"
+被分开报：**包不在** → `skipped`（钩子接在了没有检查器的地方，无事可做）；**包在而 roster
+不在** → `ungoverned`（配置过、但有一块丢了）。日志写不进去时也不再静默，改打 stderr——
+日志是这条闸唯一的可观察面，写不进去等于"装没装"看不出来。
+
+同一轮还让钩子接受 `FD_AGENT_GRAPH_MCP_CONFIG` / `FD_AGENT_GRAPH_SKILLS_ROOT`（透传给
+`bind --mcp-config` / `--skills-root`）。理由不是"方便测试"，而是：roster 声明的是**本工作区**
+的服务器与技能，在别的机器上它们本来就不存在，钩子会在与派发毫无关系的原因上拒绝。测试用
+`tests/host_fixture.py` 按 roster 自己声明的内容现搭一个宿主（服务器与技能都从 roster 读，
+所以往 roster 里加一条绑定不会让 fixture 悄悄不全）。
+
 ### 它最可能犯的错，是先写下来再去测
 
 文本匹配是裸子串，实测：

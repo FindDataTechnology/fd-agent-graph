@@ -23,14 +23,22 @@ FIXTURE = (
 
 
 class ParityTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
+    """Both suites read one fixture, so a machine without it skips - per test.
+
+    The skip used to live in `setUpClass`, which reports the whole class as a single
+    skip: the two tests then vanish from `Ran N` instead of being counted as skipped,
+    so the suite's reported total depended on whether a sibling repository happened
+    to be checked out. `check_docs.py` compares a documented count against that
+    number, which made the documented count impossible to satisfy everywhere.
+    """
+
+    def fixture(self) -> dict:
         if not FIXTURE.is_file():
-            raise unittest.SkipTest(f"shared fixture not found at {FIXTURE}")
-        cls.fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+            self.skipTest(f"shared fixture not found at {FIXTURE}")
+        return json.loads(FIXTURE.read_text(encoding="utf-8"))
 
     def test_both_resolvers_agree_on_every_fixture_case(self) -> None:
-        for case in self.fixture["cases"]:
+        for case in self.fixture()["cases"]:
             with self.subTest(case=case["name"]):
                 levels = [(label, {"process": dict(doc)}) for label, doc in case["levels"]]
                 rows = resolve_effective(
@@ -50,7 +58,7 @@ class ParityTests(unittest.TestCase):
                 )
 
     def test_both_implementations_refuse_the_same_offending_key(self) -> None:
-        for rejection in self.fixture["rejections"]:
+        for rejection in self.fixture()["rejections"]:
             with self.subTest(rejection=rejection["name"]):
                 result = normalize({"process": rejection["doc"]}, where="memory")
                 self.assertFalse(result["ok"], rejection["name"])

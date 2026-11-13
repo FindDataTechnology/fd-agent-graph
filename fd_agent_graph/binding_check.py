@@ -19,6 +19,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from .probe import exists
+
 from . import codes
 from .binding import (
     HOST_MEMORY_KEY,
@@ -45,7 +47,9 @@ def find_workspace_root(start: Path) -> Path:
     markers = ("AGENTS.md", "openspec", ".mcp.json", "CLAUDE.md")
     current = Path(start).resolve()
     for candidate in (current, *current.parents):
-        if any((candidate / marker).exists() for marker in markers):
+        # `exists()` raises `EACCES` where `os.path.exists()` would answer False, and
+        # one unreadable ancestor is enough to turn root discovery into exit 2.
+        if any(exists(candidate / marker) for marker in markers):
             return candidate
     return current
 
