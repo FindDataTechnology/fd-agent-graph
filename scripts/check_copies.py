@@ -85,9 +85,6 @@ def main() -> int:
                 f"({len(text)} vs {len(reference)} chars)"
             )
 
-    for item in skipped:
-        print(f"skip {item}")
-
     if problems:
         for item in problems:
             print(f"FAIL {item}")
@@ -110,9 +107,6 @@ def main() -> int:
                 f"SKILL.md frontmatter ({len(expected)} chars) — the platform re-renders "
                 f"SKILL.md from the manifest"
             )
-
-    for item in skipped:
-        print(f"skip {item}")
 
     if problems:
         for item in problems:
