@@ -138,6 +138,8 @@ class DispatchRecord:
                 "concurrency": self.verdict.concurrency,
                 "width": self.verdict.width,
                 "speed_up_ceiling": self.verdict.ceiling,
+                "workers_to_critical_path": self.verdict.workers_to_critical_path,
+                "makespan_bound": self.verdict.makespan_bound,
                 "permitted": self.verdict.permitted,
                 "capacity_ok": self.verdict.capacity_ok,
                 "payoff_ok": self.verdict.payoff_ok,

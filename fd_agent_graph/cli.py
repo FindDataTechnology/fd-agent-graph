@@ -189,6 +189,8 @@ def cmd_may_dispatch(args: argparse.Namespace) -> int:
         "concurrency": verdict.concurrency,
         "width": verdict.width,
         "speed_up_ceiling": verdict.ceiling,
+        "workers_to_critical_path": verdict.workers_to_critical_path,
+        "makespan_bound": verdict.makespan_bound,
         "reason": verdict.reason,
         "warning": verdict.warning,
         "blocking": [f.as_dict() for f in verdict.blocking],

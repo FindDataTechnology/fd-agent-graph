@@ -54,6 +54,10 @@ class GateReport:
                 "critical_path": self.critical_path,
                 "total_cost": self.total_cost,
                 "speed_up_ceiling": self.ceiling,
+                "workers_to_critical_path": (self.total_cost + self.critical_path - 1)
+                // self.critical_path
+                if self.critical_path > 0
+                else 0,
             },
             "summary": {
                 "errors": len(self.errors),
@@ -88,6 +92,12 @@ class DispatchVerdict:
     width: int
     ceiling: float
     blocking: tuple[Finding, ...]
+    # How many workers it takes to reach the critical-path bound (ceil(W/P)), and
+    # the makespan bound the asserted concurrency can actually promise
+    # (max(critical_path, ceil(W/C))). Additive: the payoff warning names these
+    # numbers so "diminishing returns" is a computed quantity, not an adverb.
+    workers_to_critical_path: int = 0
+    makespan_bound: int = 0
 
 
 def collect(graph: Graph) -> tuple[Finding, ...]:
@@ -180,6 +190,14 @@ def may_dispatch(
     report = check(graph)
     width = report.width
     ceiling = report.ceiling
+    total_cost = report.total_cost
+    critical_path = report.critical_path
+    workers_to_cp = (
+        (total_cost + critical_path - 1) // critical_path if critical_path > 0 else 0
+    )
+    makespan_bound = (
+        max(critical_path, -(-total_cost // concurrency)) if concurrency > 0 else critical_path
+    )
 
     extra = dispatch_findings(graph, roster, charters)
     if extra:
@@ -205,6 +223,8 @@ def may_dispatch(
             width=width,
             ceiling=ceiling,
             blocking=report.errors,
+            workers_to_critical_path=workers_to_cp,
+            makespan_bound=makespan_bound,
         )
 
     if concurrency > width:
@@ -231,6 +251,8 @@ def may_dispatch(
             ceiling=ceiling,
             # A refusal CI cannot subscribe to is a refusal nobody can act on.
             blocking=(over,),
+            workers_to_critical_path=workers_to_cp,
+            makespan_bound=makespan_bound,
         )
 
     warning = ""
@@ -239,10 +261,13 @@ def may_dispatch(
         payoff_ok = False
         warning = (
             f"{concurrency} workers fit (width {width}) but the graph's speed-up "
-            f"ceiling is {ceiling}: past this point extra workers buy diminishing "
-            f"returns because the serial head and tail dominate. Dispatch is not "
-            f"blocked; the {concurrency} workers simply will not finish "
-            f"{concurrency}x sooner."
+            f"ceiling is {ceiling} (total work {total_cost} / critical path "
+            f"{critical_path}): {workers_to_cp} workers already reach the "
+            f"critical-path bound of {critical_path}, and {concurrency} workers "
+            f"hold that same bound (makespan >= {makespan_bound}). The extra "
+            f"{concurrency - workers_to_cp} workers buy no further makespan on "
+            f"this shape; they cost {concurrency} workers' worth of tokens for "
+            f"the same wall clock."
         )
 
     return DispatchVerdict(
@@ -257,6 +282,8 @@ def may_dispatch(
         width=width,
         ceiling=ceiling,
         blocking=(),
+        workers_to_critical_path=workers_to_cp,
+        makespan_bound=makespan_bound,
     )
 
 

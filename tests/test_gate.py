@@ -6,6 +6,8 @@ than as implementation details.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import unittest
 from pathlib import Path
@@ -181,6 +183,46 @@ class DispatchTests(unittest.TestCase):
         # The advisory must never claim the workers are impossible.
         for forbidden in ("cannot", "impossible", "exceeds the graph's width"):
             self.assertNotIn(forbidden, verdict.warning)
+
+    def test_payoff_warning_names_the_computed_marginal_bound(self) -> None:
+        """"Diminishing returns" is a computed quantity, not an adverb.
+
+        fanout-12: total work 15 / critical path 4 => 4 workers already reach the
+        critical-path bound; workers 5..12 hold the same bound, so their marginal
+        makespan gain is exactly zero. The warning must say so with numbers.
+        """
+        graph = load_graph(EXAMPLES / "fanout-12.yaml")
+        verdict = may_dispatch(graph, 12)
+        self.assertEqual(verdict.workers_to_critical_path, 4)
+        self.assertEqual(verdict.makespan_bound, 4)
+        self.assertIn("total work 15 / critical path 4", verdict.warning)
+        self.assertIn("4 workers already reach the critical-path bound", verdict.warning)
+        self.assertIn("The extra 8 workers buy no further makespan", verdict.warning)
+
+    def test_different_concurrency_same_bound_is_zero_marginal(self) -> None:
+        """A pair, not a single arm: 6 and 12 workers share one makespan bound.
+
+        That shared bound is the whole reason the extra workers are not worth
+        their tokens — and the reason the pair is assertable in one test.
+        """
+        graph = load_graph(EXAMPLES / "fanout-12.yaml")
+        v6 = may_dispatch(graph, 6)
+        v12 = may_dispatch(graph, 12)
+        self.assertEqual(v6.makespan_bound, v12.makespan_bound)
+        self.assertEqual(v6.workers_to_critical_path, v12.workers_to_critical_path)
+        # 6 is above the ceiling too (3.75), so both warn — but each names its own C.
+        self.assertFalse(v6.payoff_ok)
+        self.assertIn("6 workers hold that same bound", v6.warning)
+        self.assertIn("12 workers hold that same bound", v12.warning)
+
+    def test_cli_may_dispatch_exposes_the_derived_numbers(self) -> None:
+        """The record a CI reads must carry the computed numbers, not just prose."""
+        graph_path = EXAMPLES / "fanout-12.yaml"
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            main(["may-dispatch", str(graph_path), "--concurrency", "12"])
+        payload = json.loads(buf.getvalue())
+        self.assertEqual(payload["workers_to_critical_path"], 4)
+        self.assertEqual(payload["makespan_bound"], 4)
 
     def test_refuses_above_width_on_capacity(self) -> None:
         graph = load_graph(EXAMPLES / "fanout-12.yaml")
