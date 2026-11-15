@@ -131,6 +131,42 @@ class DispatchAgreementTest(unittest.TestCase):
                 if not gate_payload["permitted"]:
                     self.assertEqual(gate_code, 1, f"{name}: gate should refuse")
 
+    def test_the_record_carries_the_computed_marginal_numbers(self):
+        """The `run` record — not just `may-dispatch` — must carry the payoff numbers.
+
+        Both surfaces read the same DispatchVerdict, but they are assembled in
+        different files (cli.cmd_may_dispatch vs dispatch.DispatchRecord.as_dict).
+        A manual run confirmed the fields flow; this test is what keeps them
+        flowing after anyone edits either assembly point.
+        """
+        path = self._examples() / "fanout-12.yaml"
+        if not path.exists():
+            self.skipTest("example missing")
+        with TemporaryDirectory() as tmp:
+            record = Path(tmp) / "r.json"
+            main(
+                [
+                    "run",
+                    str(path),
+                    "--impl",
+                    "tests.fixtures_impl:factory",
+                    "--concurrency",
+                    "12",
+                    "--record",
+                    str(record),
+                    "--start",
+                    '{"change": "demo", "scope": "s", "tasks": ["a"]}',
+                ]
+            )
+            payload = json.loads(record.read_text(encoding="utf-8"))
+        dispatch = payload["dispatch"]
+        # fanout-12: total work 15 / critical path 4.
+        self.assertEqual(dispatch["workers_to_critical_path"], 4)
+        self.assertEqual(dispatch["makespan_bound"], 4)
+        # The executed record still counts every node: the numbers describe the
+        # shape that actually ran, not a hypothetical one.
+        self.assertEqual(payload["counts"]["done"], 15)
+
     def test_a_refused_dispatch_runs_nothing(self):
         path = self._examples() / "constraint-dropped.yaml"
         if not path.exists():
