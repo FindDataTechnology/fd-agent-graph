@@ -1,5 +1,7 @@
 # fd-agent-graph
 
+> **Part of the [Facet line (寻数·谦面)](https://www.finddatatech.cloud/products/facet) of [FindData](https://www.finddatatech.cloud)** — Agent graph — declarative topology for agent fleets: nodes, edges, and the gate that checks them.
+
 运行时无关的 **agent 图工程化工具**：把 agent 系统表达成显式图（节点=能力/步骤，边=路由与依赖），然后**检查它、度量它、证明它**。
 
 不做执行器（那是 LangGraph / ADK / MAF 的事），只做任何人都还没做的那一层：**把图当被测与可校验的工件**。
