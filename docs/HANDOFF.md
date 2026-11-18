@@ -174,7 +174,7 @@ plan --change-tasks <change>/tasks.md --repos fd-wire,paas --workers 4
 
 ## 三·八、第二回合：windows-admin 上用这套东西真建了一个项目（2026-11-08）
 
-目标机 `100.64.0.5`（用户 `admin`，密钥 `~/.ssh/windows-admin-control`；**无 Python**，
+目标机 `<target-host>`（用户 `admin`，密钥 `~/.ssh/windows-admin-control`；**无 Python**，
 Node v24.20.0，Git Bash，无 Docker）。所以项目做成**零依赖 Node**——不往数据机上装任何东西。
 
 产物两处：工作区 `fd-win-health/`（源，便于版本管理）、目标机 `D:\fd-win-health\`（运行副本）。
