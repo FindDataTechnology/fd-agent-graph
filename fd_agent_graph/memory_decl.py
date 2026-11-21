@@ -61,13 +61,19 @@ DISTILL_VALUES = (DISTILL_ON, DISTILL_OFF, DISTILL_INHERIT)
 BUDGET_MIN = 64
 BUDGET_MAX = 2000
 
-AXES = ("store", "read", "write", "process")
+AXES = ("store", "read", "write", "process", "schema")
 
 AXIS_KEYS: dict[str, tuple[str, ...]] = {
     "store": ("home",),
     "read": ("scope", "budget"),
     "write": ("authority",),
     "process": ("distill", "promote_after", "cold_after_days"),
+    # The fifth axis: which key groups same-subject memories. Separate from
+    # `process` (lifecycle) and from `read` (visibility + budget) because it
+    # answers a different question, and the spec forbids one axis standing in
+    # for another. `key_by` must name a key from fd-memory's closed domain
+    # vocabulary; `domain` is a label for the reader.
+    "schema": ("key_by", "domain"),
 }
 
 #: Where an undeclared axis lands when nothing in the inheritance chain sets it.
@@ -78,6 +84,10 @@ PLATFORM_DEFAULTS: dict[str, dict[str, Any]] = {
     # question a platform can answer on an agent's behalf.
     "write": {},
     "process": {"distill": DISTILL_ON, "promote_after": 3, "cold_after_days": 0},
+    # No platform default for schema: "what does this domain record" is a
+    # question only the pack author can answer. An undefined key_by means the
+    # memory is filed without a domain key — the pre-change behaviour.
+    "schema": {},
 }
 
 #: Sub-keys this version actually has a consumer for. Everything else resolves to
@@ -103,7 +113,27 @@ PLATFORM_DEFAULTS: dict[str, dict[str, Any]] = {
 #: consumer. Marking them unexecuted is the honest reading, and it is what the
 #: shared fixture's own note says ("store/read/write are author-side axes the
 #: memory service does not implement").
-EXECUTED_SUBKEYS = frozenset({"process.distill"})
+EXECUTED_SUBKEYS = frozenset({"process.distill", "schema.key_by"})
+
+#: `schema.key_by` joined this set with add-memory-schema-axis, and the claim is
+#: auditable in fd-memory: `domainKeysForValue` (recall by value), `domainFillRates`
+#: (the adoption metric the operator reads) and the injection face's domain
+#: folding all read it. `schema.domain` is NOT here — it is a label carried into
+#: the read face, not something any code branches on.
+
+#: The closed domain-key vocabulary (add-memory-schema-axis).
+#:
+#: MUST equal fd-memory's RootDb.DOMAIN_KEYS. That vocabulary is closed on
+#: purpose: every domain key carries an expression index in the memory store, so
+#: letting a distributed pack name a new one would let it change the shape of a
+#: database it does not own — the same boundary `store.home` enforces by refusing
+#: every address form. Adding a key is a release, not a declaration.
+#:
+#: The parity check (paas scripts/check-memory-vocabulary-parity.mjs) compares
+#: this set against fd-memory's; edit one, edit the other.
+DOMAIN_KEY_VOCABULARY = frozenset(
+    {"instrument", "party", "case_no", "supplier", "sku"}
+)
 
 #: Shapes that mean "an address", refused before the enum check so the error can
 #: explain the rule instead of just listing three allowed words.
@@ -288,6 +318,24 @@ def _check_value(
             )
             return None
         return value
+
+    if axis == "schema" and key == "key_by":
+        if not isinstance(value, str) or value not in DOMAIN_KEY_VOCABULARY:
+            _err(
+                errors,
+                path,
+                "schema_key_by_invalid",
+                f"{path} must be one of {list(DOMAIN_KEY_VOCABULARY)} "
+                f"(domain keys are a closed set — each one carries an index in the memory store)",
+            )
+            return None
+        return value
+
+    if axis == "schema" and key == "domain":
+        if not isinstance(value, str) or not value.strip():
+            _err(errors, path, "schema_domain_invalid", f"{path} must be a non-empty string")
+            return None
+        return value.strip()
 
     _err(errors, path, "memory_key_unknown", f"{path} is not a known key")
     return None
