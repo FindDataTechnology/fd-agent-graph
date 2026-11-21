@@ -69,7 +69,7 @@ python3 -m fd_agent_graph.cli codes                                  # 违规码
 PYTHONPATH=. python3 -m unittest discover -s tests -q
 ```
 
-2026-11-14 实测 400 条通过、5 条 skip（同日 `add-graph-conditional-dispatch` 落地后 388，随后加了三道 Python 版本闸、七道不可读目录探针、两道 hook 宿主用例；之前是 282）。**那 5 条不是"没跑到的未知数"，是已知的烂 fixture**：
+2026-11-21 实测 404 条通过、5 条 skip（2026-11-14 是 400 条；同日 `add-graph-conditional-dispatch` 落地后 388，随后加了三道 Python 版本闸、七道不可读目录探针、两道 hook 宿主用例；之前是 282。2026-11-21 `add-memory-schema-axis` 把记忆声明的轴从四扩到五，行顺序断言随之加了两行——那两条是本就在跑的用例改了期望值，不是新增用例，所以 400→404 的差额来自更早的提交）。**那 5 条不是"没跑到的未知数"，是已知的烂 fixture**：
 它们断言的是「在真 change 上量」的读数，而 fixture 是工作区根目录下的
 `openspec/changes/<name>/tasks.md`（`build/wire-alert-delivery.graph.yaml` 的 `generated_from`
 记的还是 `/Users/chengsishi/finddata/openspec/changes/wire-alert-delivery/tasks.md`）。

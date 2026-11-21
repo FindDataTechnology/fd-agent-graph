@@ -242,6 +242,10 @@ class ResolveTests(unittest.TestCase):
         self.assertTrue(rows["process.distill"]["executed"])
 
     def test_row_order_is_stable(self) -> None:
+        # Row order is a contract: the read face renders rows in this sequence,
+        # so an operator's muscle memory ("schema is last") depends on it. The
+        # schema axis was appended rather than inserted, so every pre-existing
+        # row keeps its position and the new ones land at the end.
         rows = self.rows(("agent", {}))
         self.assertEqual(
             list(rows),
@@ -253,6 +257,8 @@ class ResolveTests(unittest.TestCase):
                 "process.distill",
                 "process.promote_after",
                 "process.cold_after_days",
+                "schema.key_by",
+                "schema.domain",
             ],
         )
 
